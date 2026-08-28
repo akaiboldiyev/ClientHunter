@@ -1,0 +1,8 @@
+{
+  "name": "LeadScout - ClientHunter",
+  "description": "AI-powered business lead finder to discover local businesses without websites, extract contact info, and export leads to Excel/CSV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
