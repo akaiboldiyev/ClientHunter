@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Sparkles, Download, FileSpreadsheet, Plus, RefreshCw } from 'lucide-react';
+import { Target, FileSpreadsheet, Plus, RefreshCw } from 'lucide-react';
 import { BusinessLead } from '../types';
 import { exportToExcel, exportToCSV } from '../utils/exporter';
 
@@ -17,17 +17,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const withoutWebCount = leads.filter(l => !l.hasWebsite).length;
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2 flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 shadow-sm shadow-slate-950/[0.03] backdrop-blur-xl">
+      <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25">
             <Target className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-lg text-slate-900 tracking-tight">LeadScout</span>
-              <span className="text-xs px-2 py-0.5 font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 rounded-full">
+              <span className="text-lg font-bold tracking-tight text-slate-950">LeadScout</span>
+              <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
                 ClientHunter
               </span>
             </div>
@@ -38,12 +38,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-1.5 sm:gap-3">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
           <button
             id="reset-demo-btn"
             onClick={onResetToDemo}
             title="Восстановить исходные данные"
-            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors text-xs flex items-center gap-1.5 border border-slate-200"
+            className="ui-icon-button border border-slate-200 text-xs"
           >
             <RefreshCw className="w-4 h-4" />
             <span className="hidden md:inline">Демо-база</span>
@@ -52,19 +52,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="add-manual-lead-btn"
             onClick={onOpenAddModal}
-            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
+            className="ui-button-secondary px-3 py-2 text-xs"
           >
             <Plus className="w-4 h-4 text-slate-600" />
             <span className="hidden sm:inline">Добавить лид</span>
           </button>
 
           {/* Export dropdown / direct buttons */}
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-lg p-1">
+          <div className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50/70 p-1">
             <button
               id="export-excel-btn"
               onClick={() => exportToExcel(leads, `leads_without_website_${Date.now()}.xlsx`)}
               disabled={leads.length === 0}
-              className="px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 rounded transition-colors flex items-center gap-1.5"
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-50"
               title="Экспорт в Excel (.xlsx)"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
@@ -74,7 +74,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="export-csv-btn"
               onClick={() => exportToCSV(leads, `leads_${Date.now()}.csv`)}
               disabled={leads.length === 0}
-              className="px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 rounded transition-colors"
+              className="hidden rounded-lg px-2 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50 sm:block"
               title="Экспорт в CSV"
             >
               CSV

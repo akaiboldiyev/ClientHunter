@@ -42,12 +42,12 @@ export const LeadTable: React.FC<LeadTableProps> = ({
 
   if (leads.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-2xs">
-        <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto mb-4 text-blue-600">
+      <div className="ui-panel p-12 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-600">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h3 className="text-base font-bold text-slate-900 mb-1">Компании не найдены</h3>
-        <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
+        <h3 className="mb-1 text-base font-bold text-slate-950">Компании не найдены</h3>
+        <p className="mx-auto max-w-md text-sm leading-6 text-slate-500">
           По текущим фильтрам нет подходящих организаций. Попробуйте изменить параметры поиска или запустить парсинг нового города.
         </p>
       </div>
@@ -55,11 +55,11 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+    <div className="ui-panel overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs sm:text-sm">
           <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-xs select-none">
+            <tr className="select-none border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
               <th className="py-3.5 pl-4 pr-2 w-10">
                 <input
                   type="checkbox"
@@ -84,8 +84,8 @@ export const LeadTable: React.FC<LeadTableProps> = ({
               return (
                 <tr
                   key={lead.id}
-                  className={`hover:bg-blue-50/30 transition-colors ${
-                    isSelected ? 'bg-blue-50/60' : ''
+                  className={`transition-colors hover:bg-indigo-50/50 ${
+                    isSelected ? 'bg-indigo-50/70' : ''
                   }`}
                 >
                   {/* Select Checkbox */}
@@ -104,18 +104,18 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => onOpenDetail(lead)}
-                          className="font-bold text-slate-900 hover:text-blue-600 transition-colors text-left text-sm"
+                          className="text-left text-sm font-bold leading-5 text-slate-950 transition-colors hover:text-indigo-700"
                         >
                           {lead.name}
                         </button>
                         {lead.leadQuality === 'hot' && !lead.hasWebsite && (
-                          <span className="px-1.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded flex items-center gap-0.5 shrink-0" title="Горячий лид: отличный рейтинг, много отзывов, но нет сайта!">
+                          <span className="flex shrink-0 items-center gap-0.5 rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800" title="Горячий лид: отличный рейтинг, много отзывов, но нет сайта!">
                             <Flame className="w-3 h-3 text-rose-600 fill-rose-600" />
                             HOT
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-slate-500 text-xs">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
                         <span className="flex items-center gap-1 truncate max-w-[240px]">
                           <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate">{lead.address || `${lead.city}, ${lead.category}`}</span>
@@ -163,7 +163,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                   {/* Website Detection Badge */}
                   <td className="py-3 px-3">
                     {!lead.hasWebsite ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300/80">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-950">
                         <GlobeX className="w-3.5 h-3.5 text-amber-700" />
                         <span>НЕТ САЙТА</span>
                       </span>
@@ -172,7 +172,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                         href={lead.website}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors truncate max-w-[140px]"
+                        className="inline-flex max-w-[140px] items-center gap-1.5 truncate rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
                       >
                         <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                         <span className="truncate">{lead.website.replace(/^https?:\/\/(www\.)?/, '')}</span>
@@ -217,7 +217,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                       {/* Outreach Pitch Generator Button */}
                       <button
                         onClick={() => onOpenPitch(lead)}
-                        className="px-2.5 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-all"
+                        className="flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700"
                         title="Сгенерировать готовое КП и скрипт для WhatsApp/Звонка"
                       >
                         <Sparkles className="w-3 h-3 text-amber-300" />

@@ -37,10 +37,10 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-2xl border p-4 sm:p-5 flex flex-col justify-between transition-all relative ${
+      className={`ui-panel relative flex flex-col justify-between p-4 transition-all sm:p-5 ${
         isSelected
-          ? 'border-blue-500 shadow-md ring-1 ring-blue-500/30'
-          : 'border-slate-200 shadow-2xs hover:shadow-sm'
+          ? 'border-indigo-500 shadow-md ring-1 ring-indigo-500/30'
+          : 'hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md'
       }`}
     >
       {/* Top Header */}
@@ -55,14 +55,14 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             />
             <h3
               onClick={() => onOpenDetail(lead)}
-              className="font-bold text-slate-900 text-base hover:text-blue-600 cursor-pointer transition-colors leading-tight"
+              className="cursor-pointer text-base font-bold leading-tight text-slate-950 transition-colors hover:text-indigo-700"
             >
               {lead.name}
             </h3>
           </div>
 
           {lead.leadQuality === 'hot' && !lead.hasWebsite && (
-            <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[11px] font-bold rounded-md flex items-center gap-1 shrink-0">
+            <span className="flex shrink-0 items-center gap-1 rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
               <Flame className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
               HOT
             </span>
@@ -72,7 +72,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         {/* Website status badge & City */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {!lead.hasWebsite ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-950">
               <GlobeX className="w-3.5 h-3.5 text-amber-700" />
               <span>НЕТ САЙТА</span>
             </span>
@@ -81,7 +81,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
               href={lead.website}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors truncate max-w-[180px]"
+              className="inline-flex max-w-[180px] items-center gap-1 truncate rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
             >
               <Globe className="w-3.5 h-3.5 text-blue-500" />
               <span className="truncate">{lead.website.replace(/^https?:\/\/(www\.)?/, '')}</span>
@@ -175,7 +175,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => onOpenPitch(lead)}
-            className="flex-1 py-1.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>Готовое КП / Скрипт</span>

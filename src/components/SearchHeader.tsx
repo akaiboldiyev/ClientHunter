@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Tag, Sparkles, SlidersHorizontal, Loader2, Compass, Layers, CheckCircle2 } from 'lucide-react';
+import { Search, MapPin, Tag, SlidersHorizontal, Loader2, Compass, CheckCircle2 } from 'lucide-react';
 import { SearchQuery, ScrapingProgress } from '../types';
 import { POPULAR_CITIES, POPULAR_CATEGORIES } from '../data/mockDatabase';
 
@@ -47,26 +47,26 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 mb-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
+    <section aria-labelledby="search-heading" className="ui-panel mb-6 p-5 sm:p-6">
+      <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Compass className="w-5 h-5 text-blue-600" />
+          <h2 id="search-heading" className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><Compass className="h-5 w-5" /></span>
             Поиск и парсинг компаний без сайта
           </h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
             Укажите город и сферу бизнеса для автоматического поиска горячих лидов на Google Maps и 2GIS
           </p>
         </div>
 
         {/* Source Switcher */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-semibold self-start md:self-auto">
+        <div className="flex max-w-full self-start overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-semibold lg:self-auto">
           <button
             type="button"
             onClick={() => setSource('google_maps')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'google_maps'
-                ? 'bg-white text-blue-700 shadow-2xs'
+                ? 'bg-white text-indigo-700 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -75,7 +75,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
           <button
             type="button"
             onClick={() => setSource('2gis')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === '2gis'
                 ? 'bg-white text-emerald-700 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -86,7 +86,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
           <button
             type="button"
             onClick={() => setSource('both')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'both'
                 ? 'bg-white text-purple-700 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -99,11 +99,11 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       {/* Main Search Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {formError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{formError}</p>}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+        {formError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{formError}</p>}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
           {/* City */}
           <div className="sm:col-span-4 relative">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label htmlFor="search-city-input" className="ui-label">
               Город поиска
             </label>
             <div className="relative">
@@ -115,14 +115,14 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="Например: Актау, Алматы..."
                 required
-                className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="ui-input pl-10"
               />
             </div>
           </div>
 
           {/* Category */}
           <div className="sm:col-span-5 relative">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label htmlFor="search-category-input" className="ui-label">
               Категория / Сфера деятельности
             </label>
             <div className="relative">
@@ -134,7 +134,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="Например: стоматология, автосервис..."
                 required
-                className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="ui-input pl-10"
               />
             </div>
           </div>
@@ -145,7 +145,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               id="start-scrape-btn"
               type="submit"
               disabled={progress.isScraping || !city.trim() || !category.trim()}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm rounded-xl shadow-sm shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-50 transition-all cursor-pointer"
+              className="ui-button-primary w-full"
             >
               {progress.isScraping ? (
                 <>
@@ -163,17 +163,17 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
         </div>
 
         {/* Quick Suggestion Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs text-slate-500">
-          <span className="font-medium mr-1">Быстрый выбор:</span>
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
+          <span className="mr-1 font-semibold text-slate-600">Быстрый выбор:</span>
           {POPULAR_CATEGORIES.slice(0, 7).map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => setCategory(cat)}
-              className={`px-2.5 py-1 rounded-lg border transition-colors ${
+              className={`rounded-lg border px-2.5 py-1.5 font-medium transition-colors ${
                 category.toLowerCase() === cat.toLowerCase()
-                  ? 'bg-blue-50 border-blue-300 text-blue-700 font-semibold'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
               {cat}
@@ -182,7 +182,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-blue-600 font-semibold hover:underline ml-auto flex items-center gap-1"
+            className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-indigo-600 hover:bg-indigo-50"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             {showAdvanced ? 'Скрыть параметры' : 'Параметры парсинга'}
@@ -191,14 +191,14 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
         {/* Advanced Options */}
         {showAdvanced && (
-          <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/70 p-3.5 rounded-xl text-xs">
+          <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:grid-cols-3">
             <div className="flex items-center gap-2">
               <input
                 id="only-without-website-checkbox"
                 type="checkbox"
                 checked={onlyWithoutWebsite}
                 onChange={(e) => setOnlyWithoutWebsite(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
               />
               <label htmlFor="only-without-website-checkbox" className="font-semibold text-slate-700 cursor-pointer">
                 Фильтровать: только без сайтов (100% лиды)
@@ -213,7 +213,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
                 id="limit-select"
                 value={limit}
                 onChange={(e) => setLimit(Number(e.target.value))}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-medium text-slate-800"
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-medium text-slate-800"
               >
                 <option value={10}>10 организаций</option>
                 <option value={15}>15 организаций</option>
@@ -232,35 +232,35 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       {/* Live Scraping Progress Bar & Animation */}
       {progress.isScraping && (
-        <div className="mt-5 p-4 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-3 animate-fade-in">
-          <div className="flex items-center justify-between text-xs font-semibold text-blue-900">
+        <div className="mt-5 space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 animate-fade-in">
+          <div className="flex items-start justify-between gap-3 text-xs font-semibold text-indigo-950">
             <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600" />
               <span>{progress.statusMessage}</span>
             </div>
-            <span className="font-mono text-blue-700">{progress.progress}%</span>
+            <span className="font-mono text-indigo-700">{progress.progress}%</span>
           </div>
 
           {/* Progress track */}
-          <div className="w-full bg-blue-200/60 h-2 rounded-full overflow-hidden">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-indigo-200/70">
             <div
-              className="bg-blue-600 h-full transition-all duration-300 ease-out"
+              className="h-full bg-indigo-600 transition-all duration-300 ease-out"
               style={{ width: `${progress.progress}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-blue-700">
-            <span>Запрос: <strong className="text-blue-950">{progress.currentQuery}</strong></span>
-            <span>Найдено без сайта: <strong className="text-blue-950">{progress.withoutWebsiteCount}</strong> из {progress.foundCount}</span>
+          <div className="flex flex-col gap-1 text-[11px] text-indigo-700 sm:flex-row sm:items-center sm:justify-between">
+            <span>Запрос: <strong className="text-indigo-950">{progress.currentQuery}</strong></span>
+            <span>Найдено без сайта: <strong className="text-indigo-950">{progress.withoutWebsiteCount}</strong> из {progress.foundCount}</span>
           </div>
         </div>
       )}
 
       {progress.stage === 'completed' && !progress.isScraping && (
-        <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-900">
           {progress.statusMessage}
         </div>
       )}
-    </div>
+    </section>
   );
 };

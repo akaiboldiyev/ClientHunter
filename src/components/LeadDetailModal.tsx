@@ -43,22 +43,23 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   if (!isOpen || !lead || !formData) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+    <div role="dialog" aria-modal="true" aria-labelledby="lead-detail-title" className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm animate-fade-in sm:items-center sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 sm:max-h-[90vh] sm:rounded-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-slate-900 text-base">Карточка лида и CRM заметки</h3>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><MessageSquare className="h-5 w-5" /></span>
+            <h3 id="lead-detail-title" className="text-base font-bold text-slate-950">Карточка лида и CRM заметки</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors"
+            aria-label="Закрыть"
+            className="ui-icon-button"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="p-5 overflow-y-auto space-y-4 flex-1 text-xs sm:text-sm">
+        <form onSubmit={handleSave} className="flex-1 space-y-5 overflow-y-auto p-5 text-sm sm:p-6">
           {formError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700">{formError}</p>}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -196,7 +197,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             />
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
             <button
               type="button"
               onClick={() => {
@@ -205,7 +206,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   onClose();
                 }
               }}
-              className="px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-1.5 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
             >
               <Trash2 className="w-4 h-4" />
               <span>Удалить лид</span>
@@ -215,13 +216,13 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors"
+              className="ui-button-secondary px-4 py-2 text-xs"
               >
                 Отмена
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow-2xs transition-colors"
+              className="ui-button-primary px-4 py-2 text-xs"
               >
                 <Save className="w-4 h-4" />
                 <span>Сохранить</span>
