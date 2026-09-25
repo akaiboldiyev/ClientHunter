@@ -1,14 +1,30 @@
 import express from 'express';
 import path from 'path';
-import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
+
+const DEFAULT_PORT = 3000;
+
+function getPort(): number {
+  const configuredPort = Number(process.env.PORT ?? DEFAULT_PORT);
+  return Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65536
+    ? configuredPort
+    : DEFAULT_PORT;
+}
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const port = getPort();
 
-  app.use(cors());
-  app.use(express.json());
+  // The UI and API are served from the same origin. Avoid a permissive CORS
+  // policy so that browser clients from other origins cannot call the API.
+  app.disable('x-powered-by');
+  app.use((_, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+  app.use(express.json({ limit: '100kb' }));
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {
@@ -43,8 +59,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LeadScout server is running on http://0.0.0.0:${PORT}`);
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`LeadScout server is running on http://0.0.0.0:${port}`);
   });
 }
 

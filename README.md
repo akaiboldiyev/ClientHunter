@@ -1,29 +1,66 @@
-# LeadScout - ClientHunter
+# LeadScout — ClientHunter
 
-AI-powered business lead finder for Google Maps & 2GIS.
+Интерфейс для ведения лидов: поиск, фильтрация, статусы CRM, заметки и экспорт в Excel/CSV. Данные хранятся локально в браузере.
 
-Discovers local businesses without websites, extracts verified contact information, and generates custom outreach pitches to convert leads into clients.
+## Стек и устройство
 
-## Features
+- React 18, TypeScript и Vite — интерфейс.
+- Express — единая точка входа для интерфейса и внутренних API (`/api/health`, `/api/info`).
+- SheetJS — экспорт данных в Excel.
 
-- **Automated Lead Search**: Search by city and category across Google Maps and 2GIS
-- **Missing Website Detection**: Automatically identify businesses that lack websites (hot leads for web development and digital marketing)
-- **Contact & Rating Extraction**: Phone numbers, full addresses, ratings, and review counts
-- **Multi-Channel Pitch Generator**: Customized high-converting scripts for WhatsApp, Cold Calls, Instagram Direct, and Email
-- **Mini-CRM**: Track deal progress (New, Contacted, Meeting, Negotiation, Won, Lost) with custom notes
-- **Excel & CSV Export**: Download complete lead lists into formatted `.xlsx` and `.csv` files
+Клиент не обращается к Gemini и не содержит API-ключей. Текущий поиск в интерфейсе генерирует демонстрационные результаты локально; отдельные Python-скрипты в рабочем каталоге запускаются самостоятельно и не подключены к веб-интерфейсу.
 
-## Tech Stack
+## Требования
 
-- React 18 + TypeScript + Vite
-- Tailwind CSS
-- Express.js Backend
-- SheetJS (XLSX) Export Engine
-- Lucide React Icons
+- Node.js 20 или новее.
+- npm 10 или новее.
 
-## Run
+## Запуск в разработке
+
+1. Установите зависимости:
+
+   ```bash
+   npm install
+   ```
+
+2. При необходимости скопируйте `.env.example` в `.env` и настройте порт. Файл `.env` не добавляется в Git.
+
+3. Запустите приложение:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Откройте `http://localhost:3000`.
+
+## Сборка и запуск production-версии
 
 ```bash
-npm install
-npm run dev
+npm run lint
+npm run build
+npm start
 ```
+
+`npm run build` создаёт папку `dist`, а `npm start` обслуживает собранный интерфейс и API на одном origin.
+
+## Переменные окружения
+
+| Переменная | Назначение | Значение по умолчанию |
+| --- | --- | --- |
+| `PORT` | Порт Express-сервера | `3000` |
+
+Не используйте `VITE_*` для секретов: такие значения встраиваются в клиентский JavaScript. Если в будущем понадобится Gemini или другой сервис с секретным ключом, вызов должен выполняться только сервером, а ключ — храниться только в `.env` на стороне сервера.
+
+## Проверки качества
+
+```bash
+npm run lint
+npm run build
+```
+
+## Безопасность данных
+
+- `.env`, зависимости, сборка, Python-кэш и локальные выгрузки исключены через `.gitignore`.
+- Сервер не включает открытый CORS и отправляет базовые защитные HTTP-заголовки.
+- Внешние ссылки открываются в отдельной вкладке с `rel="noreferrer"`.
+- Поле сайта принимает только `http://` и `https://` URL; ошибки формы отображаются в интерфейсе.

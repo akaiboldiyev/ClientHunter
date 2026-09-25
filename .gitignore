@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# Environment files: never commit credentials
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Python runtime output
+__pycache__/
+*.py[cod]
+
+# Locally generated exports and Office lock files
+results.xlsx
+results.csv
+results.json
+~$*.xlsx
