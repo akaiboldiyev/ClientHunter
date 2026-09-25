@@ -11,6 +11,7 @@ interface FilterBarProps {
   totalFilteredCount: number;
   onBatchDelete: () => void;
   onBatchStatusChange: (status: string) => void;
+  layout?: 'sidebar' | 'horizontal';
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -21,11 +22,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   selectedCount,
   totalFilteredCount,
   onBatchDelete,
-  onBatchStatusChange
+  onBatchStatusChange,
+  layout = 'horizontal'
 }) => {
+  const isSidebar = layout === 'sidebar';
   return (
-    <section aria-label="Фильтры лидов" className="ui-panel mb-5 space-y-4 p-4 sm:p-5">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+    <section aria-label="Фильтры лидов" className={`ui-panel mb-5 space-y-4 p-4 sm:p-5 ${isSidebar ? 'xl:sticky xl:top-24 xl:mb-0' : ''}`}>
+      <div className={`flex flex-col gap-3 ${isSidebar ? '' : 'xl:flex-row xl:items-center'}`}>
+        {isSidebar && <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Фильтры</p><h2 className="mt-1 text-lg font-bold text-slate-950">Сегментируйте базу</h2></div>}
         {/* Search input */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -41,7 +45,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* Quick Website Filter Tabs */}
-        <div className="flex max-w-full items-center overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-semibold shrink-0">
+        <div className={`max-w-full rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-semibold shrink-0 ${isSidebar ? 'grid grid-cols-3' : 'flex items-center overflow-x-auto'}`}>
           <button
             type="button"
             onClick={() => onChangeFilter({ ...filter, websiteFilter: 'all' })}
@@ -78,7 +82,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* View Toggle */}
-        <div className="hidden shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 lg:flex">
+        <div className={`hidden shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 lg:flex ${isSidebar ? 'self-start' : ''}`}>
           <button
             id="view-table-btn"
             type="button"
@@ -107,10 +111,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Secondary filter & sort controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className={`flex flex-wrap gap-3 border-t border-slate-100 pt-4 text-xs ${isSidebar ? 'flex-col items-stretch' : 'items-center justify-between'}`}>
+        <div className={`flex flex-wrap gap-3 ${isSidebar ? 'flex-col' : 'items-center'}`}>
           {/* Status filter */}
-          <div className="flex items-center gap-1.5">
+          <div className={`flex gap-1.5 ${isSidebar ? 'flex-col' : 'items-center'}`}>
             <span className="text-slate-500 font-medium">Статус:</span>
             <select
               id="filter-status-select"
@@ -130,7 +134,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
 
           {/* Lead Quality */}
-          <div className="flex items-center gap-1.5">
+          <div className={`flex gap-1.5 ${isSidebar ? 'flex-col' : 'items-center'}`}>
             <span className="text-slate-500 font-medium">Приоритет:</span>
             <select
               id="filter-quality-select"
@@ -159,7 +163,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* Sort By */}
-        <div className="flex items-center gap-1.5 xl:ml-auto">
+        <div className={`flex gap-1.5 ${isSidebar ? 'flex-col' : 'items-center xl:ml-auto'}`}>
           <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-slate-500 font-medium">Сортировка:</span>
           <select

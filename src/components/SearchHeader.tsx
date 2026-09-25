@@ -47,27 +47,28 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   };
 
   return (
-    <section aria-labelledby="search-heading" className="ui-panel mb-6 p-5 sm:p-6">
-      <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+    <section aria-labelledby="search-heading" className="mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_12px_36px_rgb(15_23_42/0.06)]">
+      <div className="flex flex-col justify-between gap-4 bg-slate-950 px-5 py-5 sm:px-6 lg:flex-row lg:items-center">
         <div>
-          <h2 id="search-heading" className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><Compass className="h-5 w-5" /></span>
-            Поиск и парсинг компаний без сайта
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Новая выборка</p>
+          <h2 id="search-heading" className="mt-1 flex items-center gap-2 text-xl font-bold tracking-tight text-white sm:text-2xl">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-white"><Compass className="h-5 w-5" /></span>
+            Найдите компании без сайта
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Укажите город и сферу бизнеса для автоматического поиска горячих лидов на Google Maps и 2GIS
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+            Настройте источник и сегмент — результат появится в рабочей базе ниже.
           </p>
         </div>
 
         {/* Source Switcher */}
-        <div className="flex max-w-full self-start overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-semibold lg:self-auto">
+        <div className="flex max-w-full self-start overflow-x-auto rounded-xl border border-white/10 bg-white/10 p-1 text-xs font-semibold lg:self-auto">
           <button
             type="button"
             onClick={() => setSource('google_maps')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'google_maps'
-                ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200/70'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             Google Maps
@@ -77,8 +78,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('2gis')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === '2gis'
-                ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200/70'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-emerald-700 shadow-sm'
+                : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             2GIS
@@ -88,8 +89,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('both')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'both'
-                ? 'bg-white text-purple-700 shadow-sm ring-1 ring-slate-200/70'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-purple-700 shadow-sm'
+                : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             Оба источника
@@ -98,7 +99,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
       </div>
 
       {/* Main Search Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 p-5 sm:p-6">
         {formError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{formError}</p>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
           {/* City */}

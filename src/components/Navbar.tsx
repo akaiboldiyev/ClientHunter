@@ -17,21 +17,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   const withoutWebCount = leads.filter(l => !l.hasWebsite).length;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 shadow-sm shadow-slate-950/[0.03] backdrop-blur-xl">
-      <div className="mx-auto flex min-h-[4.5rem] max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/95 shadow-lg shadow-slate-950/20 backdrop-blur-xl">
+      <div className="mx-auto flex min-h-[4.5rem] max-w-[90rem] items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 text-white shadow-lg shadow-blue-600/25">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
             <Target className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold tracking-tight text-slate-950">LeadScout</span>
-              <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+              <span className="text-lg font-bold tracking-tight text-white">LeadScout</span>
+              <span className="rounded-full border border-blue-400/20 bg-blue-400/10 px-2 py-0.5 text-[11px] font-bold text-blue-200">
                 ClientHunter
               </span>
             </div>
-            <p className="text-xs text-slate-500 hidden sm:block">
+            <p className="hidden text-xs text-slate-400 sm:block">
               Парсер и поиск клиентов без сайта на Google Maps & 2GIS
             </p>
           </div>
@@ -44,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={onResetToDemo}
             title="Восстановить исходные данные"
             aria-label="Восстановить демонстрационные данные"
-            className="ui-icon-button gap-1.5 border border-slate-200 px-2 text-xs"
+            className="ui-icon-button gap-1.5 border border-white/15 bg-white/5 px-2 text-xs text-slate-200 hover:bg-white/10 hover:text-white"
           >
             <RefreshCw className="w-4 h-4" />
             <span className="hidden md:inline">Демо-база</span>
@@ -53,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="add-manual-lead-btn"
             onClick={onOpenAddModal}
-            className="ui-button-secondary px-3 py-2 text-xs"
+            className="ui-button-secondary border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:border-white/25 hover:bg-white/10 hover:text-white"
           >
             <Plus className="w-4 h-4 text-slate-600" />
             <span className="hidden sm:inline">Добавить лид</span>

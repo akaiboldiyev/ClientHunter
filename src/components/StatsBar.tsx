@@ -16,68 +16,33 @@ export const StatsBar: React.FC<StatsBarProps> = ({ leads }) => {
     ? (leads.reduce((acc, l) => acc + (l.rating || 0), 0) / total).toFixed(1)
     : '0.0';
 
+  const metrics = [
+    { label: 'В базе', value: total, icon: Target, tone: 'text-blue-300' },
+    { label: 'Без сайта', value: noWebsite, icon: GlobeX, tone: 'text-amber-300' },
+    { label: 'Горячие', value: hotLeads, icon: Flame, tone: 'text-rose-300' },
+    { label: 'С телефоном', value: withPhone, icon: PhoneCall, tone: 'text-emerald-300' },
+    { label: 'Средний рейтинг', value: avgRating, icon: Star, tone: 'text-amber-300' },
+    { label: 'Сделки', value: wonDeals, icon: Trophy, tone: 'text-emerald-300' },
+  ];
+
   return (
-    <section aria-label="Сводка по лидам" className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      {/* Total Leads */}
-      <div className="ui-panel p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        <div className="mb-3 flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold">Всего в базе</span>
-          <Target className="w-4 h-4 text-indigo-500" />
+    <section aria-label="Сводка по лидам" className="mb-6 overflow-hidden rounded-3xl bg-slate-950 px-5 py-5 text-white shadow-[0_18px_45px_rgb(15_23_42/0.18)] sm:px-6">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-300">Оперативная сводка</p>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Пульс вашей лидогенерации</h1>
         </div>
-        <div className="text-2xl font-bold tracking-tight text-slate-950 tabular-nums">{total}</div>
-        <p className="mt-0.5 text-[11px] text-slate-500">компаний</p>
+        <p className="max-w-sm text-xs leading-5 text-slate-400">Приоритет — компании без сайта с высокой готовностью к контакту.</p>
       </div>
-
-      {/* Without Website (The Core Target!) */}
-      <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/70 p-4 shadow-sm shadow-amber-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        <div className="mb-3 flex items-center justify-between text-amber-800">
-          <span className="text-xs font-bold tracking-wide">БЕЗ САЙТА</span>
-          <GlobeX className="w-4 h-4 text-amber-600" />
-        </div>
-        <div className="text-2xl font-bold tracking-tight text-amber-950 tabular-nums">{noWebsite}</div>
-        <p className="mt-0.5 text-[11px] text-amber-700/80">
-          {total > 0 ? `${Math.round((noWebsite / total) * 100)}% от общего числа` : '0%'}
-        </p>
-      </div>
-
-      {/* Hot Leads */}
-      <div className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-pink-50/70 p-4 shadow-sm shadow-rose-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        <div className="mb-3 flex items-center justify-between text-rose-800">
-          <span className="text-xs font-semibold">Горячие лиды</span>
-          <Flame className="w-4 h-4 text-rose-600" />
-        </div>
-        <div className="text-2xl font-bold tracking-tight text-rose-950 tabular-nums">{hotLeads}</div>
-        <p className="mt-0.5 text-[11px] text-rose-700/80">Высокий рейтинг + отзывы</p>
-      </div>
-
-      {/* Phones Available */}
-      <div className="ui-panel p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        <div className="mb-3 flex items-center justify-between text-slate-500">
-          <span className="text-xs font-medium">С телефоном</span>
-          <PhoneCall className="w-4 h-4 text-emerald-500" />
-        </div>
-        <div className="text-2xl font-bold tracking-tight text-slate-950 tabular-nums">{withPhone}</div>
-        <p className="mt-0.5 text-[11px] text-slate-500">Готовы к звонку / WA</p>
-      </div>
-
-      {/* Average Rating */}
-      <div className="ui-panel p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        <div className="mb-3 flex items-center justify-between text-slate-500">
-          <span className="text-xs font-medium">Средний рейтинг</span>
-          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-        </div>
-        <div className="text-2xl font-bold tracking-tight text-slate-950 tabular-nums">{avgRating} <span className="text-base text-amber-500">★</span></div>
-        <p className="mt-0.5 text-[11px] text-slate-500">Оценка клиентов</p>
-      </div>
-
-      {/* Won Deals */}
-      <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50/70 p-4 shadow-sm shadow-emerald-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        <div className="mb-3 flex items-center justify-between text-emerald-800">
-          <span className="text-xs font-semibold">Закрытые сделки</span>
-          <Trophy className="w-4 h-4 text-emerald-600" />
-        </div>
-        <div className="text-2xl font-bold tracking-tight text-emerald-950 tabular-nums">{wonDeals}</div>
-        <p className="mt-0.5 text-[11px] text-emerald-700/80">Успешные продажи</p>
+      <div className="grid grid-cols-2 divide-x divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+        {metrics.map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="min-w-0 px-4 py-3 sm:px-5">
+            <div className="flex items-center justify-between gap-2 text-xs font-medium text-slate-400">
+              <span>{label}</span><Icon className={`h-4 w-4 ${tone}`} />
+            </div>
+            <p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums text-white">{value}</p>
+          </div>
+        ))}
       </div>
     </section>
   );

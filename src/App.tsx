@@ -279,7 +279,7 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <main className="flex-1 max-w-[90rem] w-full mx-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
         {storageNotice && (
           <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-start justify-between gap-3">
             <span>{storageNotice}</span>
@@ -295,18 +295,27 @@ export function App() {
           progress={progress}
         />
 
-        {/* Filter and Control Bar */}
-        <FilterBar
-          filter={filter}
-          onChangeFilter={setFilter}
-          viewMode={viewMode}
-          onChangeViewMode={setViewMode}
-          selectedCount={selectedIds.length}
-          totalFilteredCount={filteredLeads.length}
-          onBatchDelete={handleBatchDelete}
-          onBatchStatusChange={handleBatchStatusChange}
-        />
+        <section aria-label="Рабочая область лидов" className="xl:grid xl:grid-cols-[17.5rem_minmax(0,1fr)] xl:items-start xl:gap-6">
+          <FilterBar
+            filter={filter}
+            onChangeFilter={setFilter}
+            viewMode={viewMode}
+            onChangeViewMode={setViewMode}
+            selectedCount={selectedIds.length}
+            totalFilteredCount={filteredLeads.length}
+            onBatchDelete={handleBatchDelete}
+            onBatchStatusChange={handleBatchStatusChange}
+            layout="sidebar"
+          />
 
+          <div>
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">База лидов</p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Компании для контакта</h2>
+              </div>
+              <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white tabular-nums">{filteredLeads.length} в выборке</span>
+            </div>
         {/* Lead Table or Card Grid */}
         {viewMode === 'table' ? (
           <>
@@ -375,6 +384,8 @@ export function App() {
             </div>
           )
         )}
+          </div>
+        </section>
       </main>
 
       {/* Outreach Pitch Script Modal */}

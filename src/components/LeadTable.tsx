@@ -69,12 +69,12 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                   className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
                 />
               </th>
-              <th className="py-3.5 px-3 min-w-[220px]">Организация</th>
-              <th className="py-3.5 px-3 min-w-[150px]">Телефон</th>
-              <th className="py-3.5 px-3 min-w-[130px]">Статус сайта</th>
-              <th className="py-3.5 px-3 min-w-[120px]">Рейтинг / Отзывы</th>
-              <th className="py-3.5 px-3 min-w-[140px]">Статус CRM</th>
-              <th className="py-3.5 px-3 text-right pr-4 min-w-[160px]">Действия</th>
+              <th className="px-3 py-3.5 min-w-[185px]">Организация</th>
+              <th className="px-3 py-3.5 min-w-[125px]">Телефон</th>
+              <th className="px-3 py-3.5 min-w-[120px]">Статус сайта</th>
+              <th className="px-3 py-3.5 min-w-[105px]">Рейтинг / Отзывы</th>
+              <th className="px-3 py-3.5 min-w-[120px]">Статус CRM</th>
+              <th className="min-w-[130px] px-3 py-3.5 pr-4 text-right">Действия</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
@@ -118,7 +118,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1 truncate max-w-[240px]">
+                        <span className="flex max-w-[185px] items-center gap-1 truncate">
                           <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate">{lead.address || `${lead.city}, ${lead.category}`}</span>
                         </span>
