@@ -270,7 +270,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-dvh text-slate-900 flex flex-col">
+    <div className="signal-canvas min-h-dvh text-slate-900 flex flex-col">
       {/* Top Navigation */}
       <Navbar
         leads={leads}
@@ -312,9 +312,9 @@ export function App() {
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">База лидов</p>
-                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Компании для контакта</h2>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-white">Компании для контакта</h2>
               </div>
-              <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white tabular-nums">{filteredLeads.length} в выборке</span>
+              <span className="rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-xs font-semibold text-blue-100 tabular-nums">{filteredLeads.length} в выборке</span>
             </div>
         {/* Lead Table or Card Grid */}
         {viewMode === 'table' ? (

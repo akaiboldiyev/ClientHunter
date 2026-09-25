@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, MapPin, Tag, SlidersHorizontal, Loader2, Compass, CheckCircle2 } from 'lucide-react';
 import { SearchQuery, ScrapingProgress } from '../types';
 import { POPULAR_CITIES, POPULAR_CATEGORIES } from '../data/mockDatabase';
+import { SpotlightSurface } from './ui/SpotlightSurface';
 
 interface SearchHeaderProps {
   onStartScraping: (query: SearchQuery) => void;
@@ -47,7 +48,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   };
 
   return (
-    <section aria-labelledby="search-heading" className="mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_12px_36px_rgb(15_23_42/0.06)]">
+    <SpotlightSurface as="section" aria-labelledby="search-heading" tone="electric" className="mb-6 overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-[0_24px_70px_rgb(2_6_23/0.28)]">
       <div className="flex flex-col justify-between gap-4 bg-slate-950 px-5 py-5 sm:px-6 lg:flex-row lg:items-center">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Новая выборка</p>
@@ -263,6 +264,6 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
           {progress.statusMessage}
         </div>
       )}
-    </section>
+    </SpotlightSurface>
   );
 };

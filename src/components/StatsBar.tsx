@@ -1,6 +1,7 @@
 import React from 'react';
 import { Target, GlobeX, Flame, PhoneCall, Trophy, Star } from 'lucide-react';
 import { BusinessLead } from '../types';
+import { SpotlightSurface } from './ui/SpotlightSurface';
 
 interface StatsBarProps {
   leads: BusinessLead[];
@@ -26,7 +27,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({ leads }) => {
   ];
 
   return (
-    <section aria-label="Сводка по лидам" className="mb-6 overflow-hidden rounded-3xl bg-slate-950 px-5 py-5 text-white shadow-[0_18px_45px_rgb(15_23_42/0.18)] sm:px-6">
+    <SpotlightSurface as="section" aria-label="Сводка по лидам" tone="violet" className="mb-6 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 px-5 py-5 text-white shadow-[0_24px_70px_rgb(2_6_23/0.42)] sm:px-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-300">Оперативная сводка</p>
@@ -44,6 +45,6 @@ export const StatsBar: React.FC<StatsBarProps> = ({ leads }) => {
           </div>
         ))}
       </div>
-    </section>
+    </SpotlightSurface>
   );
 };
