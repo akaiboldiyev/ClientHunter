@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Save, Phone, MapPin, Globe, Star, MessageSquare, ExternalLink, Trash2 } from 'lucide-react';
 import { BusinessLead } from '../types';
 
@@ -17,15 +17,30 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   onSaveLead,
   onDeleteLead
 }) => {
-  if (!isOpen || !lead) return null;
+  const [formData, setFormData] = useState<BusinessLead | null>(lead ? { ...lead } : null);
+  const [formError, setFormError] = useState('');
 
-  const [formData, setFormData] = useState<BusinessLead>({ ...lead });
+  useEffect(() => {
+    setFormData(lead ? { ...lead } : null);
+    setFormError('');
+  }, [lead]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData) return;
+    if (!formData.name.trim()) {
+      setFormError('Укажите название компании.');
+      return;
+    }
+    if (formData.website.trim() && !isHttpUrl(formData.website.trim())) {
+      setFormError('Укажите корректный адрес сайта, начинающийся с http:// или https://.');
+      return;
+    }
     onSaveLead(formData);
     onClose();
   };
+
+  if (!isOpen || !lead || !formData) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
@@ -44,6 +59,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
         </div>
 
         <form onSubmit={handleSave} className="p-5 overflow-y-auto space-y-4 flex-1 text-xs sm:text-sm">
+          {formError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700">{formError}</p>}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Название организации
@@ -217,3 +233,12 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     </div>
   );
 };
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

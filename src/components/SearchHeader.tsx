@@ -18,14 +18,26 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   const [onlyWithoutWebsite, setOnlyWithoutWebsite] = useState(true);
   const [limit, setLimit] = useState(15);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!city.trim() || !category.trim() || progress.isScraping) return;
+    const normalizedCity = city.trim();
+    const normalizedCategory = category.trim();
+    if (progress.isScraping) return;
+    if (!normalizedCity || !normalizedCategory) {
+      setFormError('Укажите город и категорию для поиска.');
+      return;
+    }
+    if (normalizedCity.length > 80 || normalizedCategory.length > 80) {
+      setFormError('Город и категория должны быть не длиннее 80 символов.');
+      return;
+    }
+    setFormError('');
 
     onStartScraping({
-      city: city.trim(),
-      category: category.trim(),
+      city: normalizedCity,
+      category: normalizedCategory,
       source,
       onlyWithoutWebsite,
       minRating: 0,
@@ -87,6 +99,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       {/* Main Search Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
+        {formError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{formError}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* City */}
           <div className="sm:col-span-4 relative">
@@ -240,6 +253,12 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             <span>Запрос: <strong className="text-blue-950">{progress.currentQuery}</strong></span>
             <span>Найдено без сайта: <strong className="text-blue-950">{progress.withoutWebsiteCount}</strong> из {progress.foundCount}</span>
           </div>
+        </div>
+      )}
+
+      {progress.stage === 'completed' && !progress.isScraping && (
+        <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          {progress.statusMessage}
         </div>
       )}
     </div>

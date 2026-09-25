@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { StatsBar } from './components/StatsBar';
 import { SearchHeader } from './components/SearchHeader';
@@ -13,27 +13,37 @@ import { INITIAL_LEADS, generateScrapedLeads } from './data/mockDatabase';
 
 const STORAGE_KEY = 'leadscout_leads_data_v1';
 
-export function App() {
-  // Leads state
-  const [leads, setLeads] = useState<BusinessLead[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.warn('Failed to load leads from localStorage:', e);
-    }
+function loadLeads(): BusinessLead[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return INITIAL_LEADS;
+
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : INITIAL_LEADS;
+  } catch {
     return INITIAL_LEADS;
-  });
+  }
+}
+
+export function App() {
+  const [leads, setLeads] = useState<BusinessLead[]>(loadLeads);
+  const [storageNotice, setStorageNotice] = useState<string | null>(null);
+  const timers = useRef<number[]>([]);
 
   // Save leads to local storage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
-    } catch (e) {
-      console.error('Failed to save leads to localStorage:', e);
+    } catch {
+      setStorageNotice('Изменения не удалось сохранить в этом браузере. Не закрывайте страницу, пока не экспортируете данные.');
     }
+  }, [leads]);
+
+  useEffect(() => () => timers.current.forEach(window.clearTimeout), []);
+
+  useEffect(() => {
+    const leadIds = new Set(leads.map((lead) => lead.id));
+    setSelectedIds((ids) => ids.filter((id) => leadIds.has(id)));
   }, [leads]);
 
   // Selected leads for batch actions
@@ -72,7 +82,7 @@ export function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Handle start scraping simulation (matches python main.py steps)
-  const handleStartScraping = (query: SearchQuery) => {
+  const handleStartScraping = useCallback((query: SearchQuery) => {
     if (progress.isScraping) return;
 
     const queryStr = `${query.city} ${query.category}`;
@@ -87,37 +97,38 @@ export function App() {
     });
 
     // Step 1: Consent & Search
-    setTimeout(() => {
+    timers.current.forEach(window.clearTimeout);
+    timers.current = [window.setTimeout(() => {
       setProgress(prev => ({
         ...prev,
         stage: 'searching',
         progress: 30,
         statusMessage: `Прохождение cookie consent и ввод поискового запроса: "${queryStr}"...`
       }));
-    }, 900);
+    }, 900)];
 
     // Step 2: Feed scrolling & parsing
-    setTimeout(() => {
+    timers.current.push(window.setTimeout(() => {
       setProgress(prev => ({
         ...prev,
         stage: 'parsing_places' as any,
         progress: 60,
         statusMessage: `Прокрутка ленты результатов и извлечение карточек организаций...`
       }));
-    }, 1800);
+    }, 1800));
 
     // Step 3: Contact extraction & website verification
-    setTimeout(() => {
+    timers.current.push(window.setTimeout(() => {
       setProgress(prev => ({
         ...prev,
         stage: 'detecting_websites' as any,
         progress: 85,
         statusMessage: `Проверка наличия веб-сайтов и извлечение телефонов из панелей...`
       }));
-    }, 2700);
+    }, 2700));
 
     // Step 4: Complete & add leads (deduplicated like in main.py)
-    setTimeout(() => {
+    timers.current.push(window.setTimeout(() => {
       const generated = generateScrapedLeads(query);
       const noWebCount = generated.filter(l => !l.hasWebsite).length;
 
@@ -137,8 +148,8 @@ export function App() {
         withoutWebsiteCount: noWebCount,
         statusMessage: `Парсинг успешно завершен! Найдено ${generated.length} компаний, из них без сайта: ${noWebCount}.`
       });
-    }, 3500);
-  };
+    }, 3500));
+  }, [progress.isScraping]);
 
   // Filtered and sorted leads
   const filteredLeads = useMemo(() => {
@@ -163,6 +174,10 @@ export function App() {
 
         // Phone only
         if (filter.phoneOnly && (!lead.phone || lead.phone.trim().length === 0)) return false;
+
+        if (filter.minRating > 0 && lead.rating < filter.minRating) return false;
+        if (filter.category.trim() && !lead.category.toLowerCase().includes(filter.category.trim().toLowerCase())) return false;
+        if (filter.city.trim() && !lead.city.toLowerCase().includes(filter.city.trim().toLowerCase())) return false;
 
         // Quality
         if (filter.quality !== 'all' && lead.leadQuality !== filter.quality) return false;
@@ -193,18 +208,20 @@ export function App() {
   }, [leads, filter]);
 
   // Lead updates
-  const handleUpdateStatus = (leadId: string, status: BusinessLead['status']) => {
+  const handleUpdateStatus = useCallback((leadId: string, status: BusinessLead['status']) => {
     setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, status } : l)));
-  };
+  }, []);
 
   const handleUpdateLead = (updated: BusinessLead) => {
     setLeads(prev => prev.map(l => (l.id === updated.id ? updated : l)));
   };
 
-  const handleDeleteLead = (leadId: string) => {
+  const handleDeleteLead = useCallback((leadId: string) => {
     setLeads(prev => prev.filter(l => l.id !== leadId));
     setSelectedIds(prev => prev.filter(id => id !== leadId));
-  };
+    setPitchLead((lead) => lead?.id === leadId ? null : lead);
+    setDetailLead((lead) => lead?.id === leadId ? null : lead);
+  }, []);
 
   const handleAddManualLead = (newLead: BusinessLead) => {
     setLeads(prev => [newLead, ...prev]);
@@ -225,10 +242,13 @@ export function App() {
   };
 
   const handleToggleSelectAll = () => {
-    if (selectedIds.length === filteredLeads.length) {
-      setSelectedIds([]);
+    const visibleIds = filteredLeads.map((lead) => lead.id);
+    const allVisibleSelected = visibleIds.every((id) => selectedIds.includes(id));
+
+    if (allVisibleSelected) {
+      setSelectedIds((ids) => ids.filter((id) => !visibleIds.includes(id)));
     } else {
-      setSelectedIds(filteredLeads.map(l => l.id));
+      setSelectedIds((ids) => Array.from(new Set([...ids, ...visibleIds])));
     }
   };
 
@@ -258,6 +278,12 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {storageNotice && (
+          <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-start justify-between gap-3">
+            <span>{storageNotice}</span>
+            <button type="button" onClick={() => setStorageNotice(null)} className="font-semibold underline underline-offset-2">Закрыть</button>
+          </div>
+        )}
         {/* Global Statistics */}
         <StatsBar leads={leads} />
 
@@ -292,20 +318,27 @@ export function App() {
             onDeleteLead={handleDeleteLead}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredLeads.map(lead => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                isSelected={selectedIds.includes(lead.id)}
-                onToggleSelect={handleToggleSelect}
-                onOpenPitch={setPitchLead}
-                onOpenDetail={setDetailLead}
-                onChangeStatus={handleUpdateStatus}
-                onDeleteLead={handleDeleteLead}
-              />
-            ))}
-          </div>
+          filteredLeads.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-2xs">
+              <h3 className="text-base font-bold text-slate-900">Компании не найдены</h3>
+              <p className="mt-1 text-sm text-slate-500">Измените параметры фильтра или запустите новый поиск.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredLeads.map(lead => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  isSelected={selectedIds.includes(lead.id)}
+                  onToggleSelect={handleToggleSelect}
+                  onOpenPitch={setPitchLead}
+                  onOpenDetail={setDetailLead}
+                  onChangeStatus={handleUpdateStatus}
+                  onDeleteLead={handleDeleteLead}
+                />
+              ))}
+            </div>
+          )
         )}
       </main>
 

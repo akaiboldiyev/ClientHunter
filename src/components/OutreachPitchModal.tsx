@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Copy, Check, Send, Sparkles, MessageCircle, PhoneCall, Mail, Share2 } from 'lucide-react';
 import { BusinessLead } from '../types';
 import { generatePitchTemplates, PitchTemplate } from '../utils/pitchGenerator';
@@ -16,26 +16,39 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
   onClose,
   onUpdateNotes
 }) => {
-  if (!isOpen || !lead) return null;
-
-  const templates = generatePitchTemplates(lead);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templates[0].id);
+  const templates = lead ? generatePitchTemplates(lead) : [];
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
-  const activeTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
-  const cleanPhone = (lead.phone || '').replace(/[^\d+]/g, '');
+  useEffect(() => {
+    setSelectedTemplateId(templates[0]?.id ?? '');
+    setCopiedId(null);
+    setCopyError(null);
+  }, [lead?.id]);
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const activeTemplate = templates.find((template) => template.id === selectedTemplateId) || templates[0];
+  const cleanPhone = (lead?.phone || '').replace(/[^\d+]/g, '');
+
+  const handleCopy = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setCopyError(null);
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setCopyError('Не удалось скопировать текст. Выделите его и скопируйте вручную.');
+    }
   };
 
   const handleOpenWhatsApp = () => {
+    if (!activeTemplate || !cleanPhone.replace(/\D/g, '')) return;
     const text = encodeURIComponent(activeTemplate.text);
     const url = `https://wa.me/${cleanPhone.replace('+', '')}?text=${text}`;
     window.open(url, '_blank');
   };
+
+  if (!isOpen || !lead || !activeTemplate) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
@@ -90,6 +103,7 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
 
         {/* Body */}
         <div className="p-5 flex-1 overflow-y-auto space-y-4">
+          {copyError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{copyError}</p>}
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               {activeTemplate.title}
@@ -133,7 +147,7 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {lead.phone && (
+            {cleanPhone.replace(/\D/g, '') && (
               <button
                 onClick={handleOpenWhatsApp}
                 className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs transition-colors"

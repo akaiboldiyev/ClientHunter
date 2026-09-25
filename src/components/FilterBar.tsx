@@ -40,7 +40,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* Quick Website Filter Tabs */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold shrink-0">
+        <div className="flex max-w-full overflow-x-auto items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold shrink-0">
           <button
             type="button"
             onClick={() => onChangeFilter({ ...filter, websiteFilter: 'all' })}

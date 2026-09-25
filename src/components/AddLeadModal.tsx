@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, Building2 } from 'lucide-react';
 import { BusinessLead } from '../types';
 
@@ -13,8 +13,6 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
   onClose,
   onAddLead
 }) => {
-  if (!isOpen) return null;
-
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -24,19 +22,43 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
   const [rating, setRating] = useState(4.8);
   const [reviews, setReviews] = useState(15);
   const [notes, setNotes] = useState('');
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setName('');
+    setPhone('');
+    setAddress('');
+    setWebsite('');
+    setCity('Актау');
+    setCategory('стоматология');
+    setRating(4.8);
+    setReviews(15);
+    setNotes('');
+    setFormError('');
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setFormError('Укажите название компании.');
+      return;
+    }
 
-    const hasWeb = Boolean(website.trim());
+    const normalizedWebsite = website.trim();
+    if (normalizedWebsite && !isHttpUrl(normalizedWebsite)) {
+      setFormError('Укажите корректный адрес сайта, начинающийся с http:// или https://.');
+      return;
+    }
+
+    const hasWeb = Boolean(normalizedWebsite);
 
     const newLead: BusinessLead = {
       id: `manual-${Date.now()}`,
       name: name.trim(),
       phone: phone.trim(),
       address: address.trim(),
-      website: website.trim(),
+      website: normalizedWebsite,
       city: city.trim() || 'Актау',
       category: category.trim() || 'бизнес',
       rating: rating || 0,
@@ -53,6 +75,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
     onAddLead(newLead);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
@@ -71,6 +95,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1 text-xs sm:text-sm">
+          {formError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700">{formError}</p>}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Название компании *
@@ -214,3 +239,12 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
     </div>
   );
 };
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
