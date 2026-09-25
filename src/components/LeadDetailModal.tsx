@@ -43,9 +43,9 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   if (!isOpen || !lead || !formData) return null;
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="lead-detail-title" className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm animate-fade-in sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 sm:max-h-[90vh] sm:rounded-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+    <div role="dialog" aria-modal="true" aria-labelledby="lead-detail-title" className="ui-modal-shell animate-fade-in">
+      <div className="ui-modal-panel max-w-xl">
+        <div className="ui-modal-header">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><MessageSquare className="h-5 w-5" /></span>
             <h3 id="lead-detail-title" className="text-base font-bold text-slate-950">Карточка лида и CRM заметки</h3>
@@ -59,8 +59,9 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           </button>
         </div>
 
+        {formError && <p role="alert" className="mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 shadow-sm sm:mx-6">{formError}</p>}
+
         <form onSubmit={handleSave} className="flex-1 space-y-5 overflow-y-auto p-5 text-sm sm:p-6">
-          {formError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700">{formError}</p>}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Название организации
@@ -197,7 +198,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+          <div className="sticky bottom-0 -mx-5 flex items-center justify-between gap-3 border-t border-slate-200 bg-white/95 px-5 pt-4 pb-1 backdrop-blur sm:-mx-6 sm:px-6">
             <button
               type="button"
               onClick={() => {

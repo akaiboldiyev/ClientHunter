@@ -50,7 +50,9 @@ export function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // View mode
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 1024 ? 'cards' : 'table'
+  );
 
   // Filter state
   const [filter, setFilter] = useState<LeadFilter>({
@@ -268,7 +270,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/60 text-slate-900 flex flex-col">
+    <div className="min-h-dvh text-slate-900 flex flex-col">
       {/* Top Navigation */}
       <Navbar
         leads={leads}
@@ -277,7 +279,7 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
         {storageNotice && (
           <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-start justify-between gap-3">
             <span>{storageNotice}</span>
@@ -307,16 +309,49 @@ export function App() {
 
         {/* Lead Table or Card Grid */}
         {viewMode === 'table' ? (
-          <LeadTable
-            leads={filteredLeads}
-            selectedIds={selectedIds}
-            onToggleSelect={handleToggleSelect}
-            onToggleSelectAll={handleToggleSelectAll}
-            onOpenPitch={setPitchLead}
-            onOpenDetail={setDetailLead}
-            onChangeStatus={handleUpdateStatus}
-            onDeleteLead={handleDeleteLead}
-          />
+          <>
+            <div className="hidden lg:block">
+              <LeadTable
+                leads={filteredLeads}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onToggleSelectAll={handleToggleSelectAll}
+                onOpenPitch={setPitchLead}
+                onOpenDetail={setDetailLead}
+                onChangeStatus={handleUpdateStatus}
+                onDeleteLead={handleDeleteLead}
+              />
+            </div>
+            <div className="lg:hidden">
+              {filteredLeads.length === 0 ? (
+                <LeadTable
+                  leads={filteredLeads}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                  onToggleSelectAll={handleToggleSelectAll}
+                  onOpenPitch={setPitchLead}
+                  onOpenDetail={setDetailLead}
+                  onChangeStatus={handleUpdateStatus}
+                  onDeleteLead={handleDeleteLead}
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {filteredLeads.map(lead => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      isSelected={selectedIds.includes(lead.id)}
+                      onToggleSelect={handleToggleSelect}
+                      onOpenPitch={setPitchLead}
+                      onOpenDetail={setDetailLead}
+                      onChangeStatus={handleUpdateStatus}
+                      onDeleteLead={handleDeleteLead}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         ) : (
           filteredLeads.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-2xs">

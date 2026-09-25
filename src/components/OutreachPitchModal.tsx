@@ -51,16 +51,16 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
   if (!isOpen || !lead || !activeTemplate) return null;
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="pitch-title" className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm animate-fade-in sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 sm:max-h-[90vh] sm:rounded-2xl">
+    <div role="dialog" aria-modal="true" aria-labelledby="pitch-title" className="ui-modal-shell animate-fade-in">
+      <div className="ui-modal-panel max-w-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700">
+        <div className="ui-modal-header">
+          <div className="min-w-0 flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-100 text-blue-700">
               <Sparkles className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 id="pitch-title" className="flex items-center gap-2 text-base font-bold text-slate-950">
+              <h3 id="pitch-title" className="text-balance text-base font-bold text-slate-950">
                 Скрипты продаж для {lead.name}
               </h3>
               <p className="text-xs text-slate-500">
@@ -79,14 +79,14 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
         </div>
 
         {/* Template Channel Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50 p-3 text-xs font-semibold">
+        <div className="grid grid-cols-2 gap-1.5 border-b border-slate-200 bg-slate-50 p-3 text-xs font-semibold sm:flex sm:flex-wrap sm:items-center">
           {templates.map((tpl) => {
             const isActive = tpl.id === selectedTemplateId;
             return (
               <button
                 key={tpl.id}
                 onClick={() => setSelectedTemplateId(tpl.id)}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                className={`min-h-9 rounded-lg px-3 py-1.5 flex items-center justify-center gap-1.5 whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-white text-blue-700 shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -105,14 +105,14 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
         {/* Body */}
         <div className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
           {copyError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{copyError}</p>}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               {activeTemplate.title}
             </span>
 
             <button
               onClick={() => handleCopy(activeTemplate.text, activeTemplate.id)}
-              className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold flex items-center gap-1.5 transition-colors"
+              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
             >
               {copiedId === activeTemplate.id ? (
                 <>
@@ -128,7 +128,7 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
             </button>
           </div>
 
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs sm:text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+          <div className="break-words rounded-2xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs leading-relaxed text-slate-800 whitespace-pre-wrap sm:text-sm">
             {activeTemplate.text}
           </div>
 

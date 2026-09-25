@@ -51,7 +51,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
           <h2 id="search-heading" className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><Compass className="h-5 w-5" /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><Compass className="h-5 w-5" /></span>
             Поиск и парсинг компаний без сайта
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
@@ -66,7 +66,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('google_maps')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'google_maps'
-                ? 'bg-white text-indigo-700 shadow-sm'
+                ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200/70'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -77,7 +77,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('2gis')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === '2gis'
-                ? 'bg-white text-emerald-700 shadow-2xs'
+                ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200/70'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -88,7 +88,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('both')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'both'
-                ? 'bg-white text-purple-700 shadow-2xs'
+                ? 'bg-white text-purple-700 shadow-sm ring-1 ring-slate-200/70'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -172,7 +172,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               onClick={() => setCategory(cat)}
               className={`rounded-lg border px-2.5 py-1.5 font-medium transition-colors ${
                 category.toLowerCase() === cat.toLowerCase()
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
@@ -182,7 +182,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-indigo-600 hover:bg-indigo-50"
+            aria-expanded={showAdvanced}
+            className="ml-auto flex min-h-9 items-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-blue-600 hover:bg-blue-50"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             {showAdvanced ? 'Скрыть параметры' : 'Параметры парсинга'}
@@ -232,26 +233,26 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       {/* Live Scraping Progress Bar & Animation */}
       {progress.isScraping && (
-        <div className="mt-5 space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 animate-fade-in">
-          <div className="flex items-start justify-between gap-3 text-xs font-semibold text-indigo-950">
+        <div className="mt-5 space-y-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4 animate-fade-in">
+          <div className="flex items-start justify-between gap-3 text-xs font-semibold text-blue-950">
             <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600" />
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />
               <span>{progress.statusMessage}</span>
             </div>
-            <span className="font-mono text-indigo-700">{progress.progress}%</span>
+            <span className="font-mono text-blue-700">{progress.progress}%</span>
           </div>
 
           {/* Progress track */}
-          <div className="h-2 w-full overflow-hidden rounded-full bg-indigo-200/70">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-blue-200/70">
             <div
-              className="h-full bg-indigo-600 transition-all duration-300 ease-out"
+              className="h-full bg-blue-600 transition-all duration-300 ease-out"
               style={{ width: `${progress.progress}%` }}
             />
           </div>
 
-          <div className="flex flex-col gap-1 text-[11px] text-indigo-700 sm:flex-row sm:items-center sm:justify-between">
-            <span>Запрос: <strong className="text-indigo-950">{progress.currentQuery}</strong></span>
-            <span>Найдено без сайта: <strong className="text-indigo-950">{progress.withoutWebsiteCount}</strong> из {progress.foundCount}</span>
+          <div className="flex flex-col gap-1 text-[11px] text-blue-700 sm:flex-row sm:items-center sm:justify-between">
+            <span>Запрос: <strong className="text-blue-950">{progress.currentQuery}</strong></span>
+            <span>Найдено без сайта: <strong className="text-blue-950">{progress.withoutWebsiteCount}</strong> из {progress.foundCount}</span>
           </div>
         </div>
       )}
