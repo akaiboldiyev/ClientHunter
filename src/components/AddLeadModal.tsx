@@ -83,8 +83,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
       <div className="ui-modal-panel max-w-lg">
         <div className="ui-modal-header">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><Building2 className="h-5 w-5" /></span>
-            <h3 id="add-lead-title" className="text-base font-bold text-slate-950">Добавить лид вручную</h3>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300"><Building2 className="h-5 w-5" /></span>
+            <h3 id="add-lead-title" className="text-base font-bold text-white">Добавить лид вручную</h3>
           </div>
           <button
             onClick={onClose}
@@ -95,7 +95,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
           </button>
         </div>
 
-        {formError && <p role="alert" className="mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 shadow-sm sm:mx-6">{formError}</p>}
+        {formError && <p role="alert" className="mx-5 mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-200 shadow-sm sm:mx-6">{formError}</p>}
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 text-sm sm:p-6">
           <div>
@@ -232,7 +232,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
             />
           </div>
 
-          <div className="sticky bottom-0 -mx-5 flex items-center justify-end gap-3 border-t border-slate-200 bg-white/95 px-5 pt-4 pb-1 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="sticky bottom-0 -mx-5 flex items-center justify-end gap-3 border-t border-slate-800 bg-slate-950/95 px-5 pt-4 pb-1 backdrop-blur sm:-mx-6 sm:px-6">
             <button
               type="button"
               onClick={onClose}

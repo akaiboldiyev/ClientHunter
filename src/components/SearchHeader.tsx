@@ -48,7 +48,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   };
 
   return (
-    <SpotlightSurface as="section" aria-labelledby="search-heading" tone="electric" className="mb-6 overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-[0_24px_70px_rgb(2_6_23/0.28)]">
+    <SpotlightSurface as="section" aria-labelledby="search-heading" tone="electric" className="mb-6 overflow-hidden rounded-[2rem] border border-slate-700/90 bg-slate-950 shadow-[0_24px_70px_rgb(2_6_23/0.40)]">
       <div className="flex flex-col justify-between gap-4 bg-slate-950 px-5 py-5 sm:px-6 lg:flex-row lg:items-center">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Новая выборка</p>
@@ -68,7 +68,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('google_maps')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'google_maps'
-                ? 'bg-white text-blue-700 shadow-sm'
+                ? 'bg-blue-400/15 text-blue-100 shadow-sm ring-1 ring-blue-300/30'
                 : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
@@ -79,7 +79,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('2gis')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === '2gis'
-                ? 'bg-white text-emerald-700 shadow-sm'
+                ? 'bg-emerald-400/15 text-emerald-100 shadow-sm ring-1 ring-emerald-300/30'
                 : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
@@ -90,7 +90,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             onClick={() => setSource('both')}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-all ${
               source === 'both'
-                ? 'bg-white text-purple-700 shadow-sm'
+                ? 'bg-violet-400/15 text-violet-100 shadow-sm ring-1 ring-violet-300/30'
                 : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
@@ -100,8 +100,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
       </div>
 
       {/* Main Search Form */}
-      <form onSubmit={handleSubmit} className="space-y-4 p-5 sm:p-6">
-        {formError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{formError}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4 border-t border-white/10 bg-slate-950/70 p-5 sm:p-6">
+        {formError && <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200">{formError}</p>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
           {/* City */}
           <div className="sm:col-span-4 relative">
@@ -165,8 +165,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
         </div>
 
         {/* Quick Suggestion Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
-          <span className="mr-1 font-semibold text-slate-600">Быстрый выбор:</span>
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-400">
+          <span className="mr-1 font-semibold text-slate-300">Быстрый выбор:</span>
           {POPULAR_CATEGORIES.slice(0, 7).map((cat) => (
             <button
               key={cat}
@@ -174,8 +174,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               onClick={() => setCategory(cat)}
               className={`rounded-lg border px-2.5 py-1.5 font-medium transition-colors ${
                 category.toLowerCase() === cat.toLowerCase()
-                  ? 'border-blue-200 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-blue-400/50 bg-blue-500/15 text-blue-200'
+                  : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:border-slate-500 hover:bg-slate-800'
               }`}
             >
               {cat}
@@ -185,7 +185,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
             aria-expanded={showAdvanced}
-            className="ml-auto flex min-h-9 items-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-blue-600 hover:bg-blue-50"
+            className="ml-auto flex min-h-9 items-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-blue-300 hover:bg-blue-500/10"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             {showAdvanced ? 'Скрыть параметры' : 'Параметры парсинга'}
@@ -194,7 +194,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
         {/* Advanced Options */}
         {showAdvanced && (
-          <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-700 bg-slate-900/80 p-4 text-xs sm:grid-cols-3">
             <div className="flex items-center gap-2">
               <input
                 id="only-without-website-checkbox"
@@ -203,20 +203,20 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
                 onChange={(e) => setOnlyWithoutWebsite(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
               />
-              <label htmlFor="only-without-website-checkbox" className="font-semibold text-slate-700 cursor-pointer">
+              <label htmlFor="only-without-website-checkbox" className="font-semibold text-slate-200 cursor-pointer">
                 Фильтровать: только без сайтов (100% лиды)
               </label>
             </div>
 
             <div className="flex items-center gap-2">
-              <label htmlFor="limit-select" className="font-semibold text-slate-700 whitespace-nowrap">
+              <label htmlFor="limit-select" className="font-semibold text-slate-200 whitespace-nowrap">
                 Количество результатов:
               </label>
               <select
                 id="limit-select"
                 value={limit}
                 onChange={(e) => setLimit(Number(e.target.value))}
-                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-medium text-slate-800"
+                className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-medium text-slate-100"
               >
                 <option value={10}>10 организаций</option>
                 <option value={15}>15 организаций</option>
@@ -225,7 +225,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-1.5 text-slate-500">
+            <div className="flex items-center gap-1.5 text-slate-400">
               <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
               <span>Автоматическое определение дубликатов по названию и телефону</span>
             </div>
@@ -235,32 +235,32 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       {/* Live Scraping Progress Bar & Animation */}
       {progress.isScraping && (
-        <div className="mt-5 space-y-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4 animate-fade-in">
-          <div className="flex items-start justify-between gap-3 text-xs font-semibold text-blue-950">
+        <div className="mt-5 space-y-3 rounded-xl border border-blue-400/30 bg-blue-500/10 p-4 animate-fade-in">
+          <div className="flex items-start justify-between gap-3 text-xs font-semibold text-blue-100">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />
               <span>{progress.statusMessage}</span>
             </div>
-            <span className="font-mono text-blue-700">{progress.progress}%</span>
+            <span className="font-mono text-blue-300">{progress.progress}%</span>
           </div>
 
           {/* Progress track */}
-          <div className="h-2 w-full overflow-hidden rounded-full bg-blue-200/70">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
             <div
               className="h-full bg-blue-600 transition-all duration-300 ease-out"
               style={{ width: `${progress.progress}%` }}
             />
           </div>
 
-          <div className="flex flex-col gap-1 text-[11px] text-blue-700 sm:flex-row sm:items-center sm:justify-between">
-            <span>Запрос: <strong className="text-blue-950">{progress.currentQuery}</strong></span>
-            <span>Найдено без сайта: <strong className="text-blue-950">{progress.withoutWebsiteCount}</strong> из {progress.foundCount}</span>
+          <div className="flex flex-col gap-1 text-[11px] text-blue-200 sm:flex-row sm:items-center sm:justify-between">
+            <span>Запрос: <strong className="text-white">{progress.currentQuery}</strong></span>
+            <span>Найдено без сайта: <strong className="text-white">{progress.withoutWebsiteCount}</strong> из {progress.foundCount}</span>
           </div>
         </div>
       )}
 
       {progress.stage === 'completed' && !progress.isScraping && (
-        <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-900">
+        <div role="status" className="mt-5 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-100">
           {progress.statusMessage}
         </div>
       )}

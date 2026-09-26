@@ -47,8 +47,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
       <div className="ui-modal-panel max-w-xl">
         <div className="ui-modal-header">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><MessageSquare className="h-5 w-5" /></span>
-            <h3 id="lead-detail-title" className="text-base font-bold text-slate-950">Карточка лида и CRM заметки</h3>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300"><MessageSquare className="h-5 w-5" /></span>
+            <h3 id="lead-detail-title" className="text-base font-bold text-white">Карточка лида и CRM заметки</h3>
           </div>
           <button
             onClick={onClose}
@@ -59,11 +59,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           </button>
         </div>
 
-        {formError && <p role="alert" className="mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 shadow-sm sm:mx-6">{formError}</p>}
+        {formError && <p role="alert" className="mx-5 mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-200 shadow-sm sm:mx-6">{formError}</p>}
 
         <form onSubmit={handleSave} className="flex-1 space-y-5 overflow-y-auto p-5 text-sm sm:p-6">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-slate-300">
               Название организации
             </label>
             <input
@@ -71,13 +71,13 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-300">
                 Телефон
               </label>
               <input
@@ -85,18 +85,18 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="+7 (xxx) xxx-xx-xx"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-300">
                 Статус в CRM
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-semibold text-slate-100"
               >
                 <option value="new">🆕 Новый лид</option>
                 <option value="contacted">📞 Связались</option>
@@ -109,20 +109,20 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-slate-300">
               Адрес
             </label>
             <input
               type="text"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-300">
                 Веб-сайт (оставьте пустым если нет)
               </label>
               <input
@@ -136,18 +136,18 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   })
                 }
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-300">
                 Приоритет лида
               </label>
               <select
                 value={formData.leadQuality}
                 onChange={(e) => setFormData({ ...formData, leadQuality: e.target.value as any })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-semibold text-slate-100"
               >
                 <option value="hot">🔥 Горячий (высокий интерес)</option>
                 <option value="warm">⚡ Теплый</option>
@@ -158,7 +158,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-300">
                 Рейтинг на картах
               </label>
               <input
@@ -168,11 +168,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 max="5"
                 value={formData.rating}
                 onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-300">
                 Количество отзывов
               </label>
               <input
@@ -180,13 +180,13 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 min="0"
                 value={formData.reviews}
                 onChange={(e) => setFormData({ ...formData, reviews: parseInt(e.target.value, 10) || 0 })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-slate-300">
               История звонков и заметки (CRM)
             </label>
             <textarea
@@ -194,11 +194,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               value={formData.notes || ''}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Результаты последнего звонка, договоренности, бюджет клиента..."
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
+              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
-          <div className="sticky bottom-0 -mx-5 flex items-center justify-between gap-3 border-t border-slate-200 bg-white/95 px-5 pt-4 pb-1 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="sticky bottom-0 -mx-5 flex items-center justify-between gap-3 border-t border-slate-800 bg-slate-950/95 px-5 pt-4 pb-1 backdrop-blur sm:-mx-6 sm:px-6">
             <button
               type="button"
               onClick={() => {
@@ -207,7 +207,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   onClose();
                 }
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/10"
             >
               <Trash2 className="w-4 h-4" />
               <span>Удалить лид</span>

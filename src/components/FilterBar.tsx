@@ -29,7 +29,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   return (
     <section aria-label="Фильтры лидов" className={`ui-panel mb-5 space-y-4 p-4 sm:p-5 ${isSidebar ? 'xl:sticky xl:top-24 xl:mb-0' : ''}`}>
       <div className={`flex flex-col gap-3 ${isSidebar ? '' : 'xl:flex-row xl:items-center'}`}>
-        {isSidebar && <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Фильтры</p><h2 className="mt-1 text-lg font-bold text-slate-950">Сегментируйте базу</h2></div>}
+        {isSidebar && <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Фильтры</p><h2 className="mt-1 text-lg font-bold text-white">Сегментируйте базу</h2></div>}
         {/* Search input */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -45,14 +45,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* Quick Website Filter Tabs */}
-        <div className={`max-w-full rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-semibold shrink-0 ${isSidebar ? 'grid grid-cols-3' : 'flex items-center overflow-x-auto'}`}>
+        <div className={`max-w-full rounded-xl border border-slate-700 bg-slate-900/80 p-1 text-xs font-semibold shrink-0 ${isSidebar ? 'grid grid-cols-3' : 'flex items-center overflow-x-auto'}`}>
           <button
             type="button"
             onClick={() => onChangeFilter({ ...filter, websiteFilter: 'all' })}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-colors ${
               filter.websiteFilter === 'all'
-                ? 'bg-white text-slate-950 shadow-sm ring-1 ring-slate-200/70'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-slate-700 text-white shadow-sm ring-1 ring-slate-600/70'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             Все компании
@@ -63,7 +63,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             className={`flex whitespace-nowrap items-center gap-1.5 rounded-lg px-3 py-2 transition-colors ${
               filter.websiteFilter === 'without_website'
                 ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
-                : 'text-amber-700 hover:text-amber-900'
+                : 'text-amber-300 hover:text-amber-100'
             }`}
           >
             <span>🔥 Без сайта</span>
@@ -73,8 +73,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             onClick={() => onChangeFilter({ ...filter, websiteFilter: 'with_website' })}
             className={`whitespace-nowrap rounded-lg px-3 py-2 transition-colors ${
               filter.websiteFilter === 'with_website'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-slate-700 text-white shadow-2xs'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             С сайтом
@@ -82,7 +82,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* View Toggle */}
-        <div className={`hidden shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 lg:flex ${isSidebar ? 'self-start' : ''}`}>
+        <div className={`hidden shrink-0 items-center gap-1 rounded-xl border border-slate-700 bg-slate-900/80 p-1 lg:flex ${isSidebar ? 'self-start' : ''}`}>
           <button
             id="view-table-btn"
             type="button"
@@ -90,7 +90,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             title="Таблица"
             aria-label="Табличный вид"
             className={`rounded-lg p-2 transition-colors ${
-              viewMode === 'table' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+              viewMode === 'table' ? 'bg-slate-700 text-blue-300 shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
           >
             <LayoutList className="w-4 h-4" />
@@ -102,7 +102,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             title="Карточки"
             aria-label="Карточки"
             className={`rounded-lg p-2 transition-colors ${
-              viewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+              viewMode === 'cards' ? 'bg-slate-700 text-blue-300 shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
           >
             <LayoutGrid className="w-4 h-4" />
@@ -111,17 +111,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Secondary filter & sort controls */}
-      <div className={`flex flex-wrap gap-3 border-t border-slate-100 pt-4 text-xs ${isSidebar ? 'flex-col items-stretch' : 'items-center justify-between'}`}>
+      <div className={`flex flex-wrap gap-3 border-t border-slate-800 pt-4 text-xs ${isSidebar ? 'flex-col items-stretch' : 'items-center justify-between'}`}>
         <div className={`flex flex-wrap gap-3 ${isSidebar ? 'flex-col' : 'items-center'}`}>
           {/* Status filter */}
           <div className={`flex gap-1.5 ${isSidebar ? 'flex-col' : 'items-center'}`}>
-            <span className="text-slate-500 font-medium">Статус:</span>
+            <span className="text-slate-400 font-medium">Статус:</span>
             <select
               id="filter-status-select"
               value={filter.status}
               onChange={(e) => onChangeFilter({ ...filter, status: e.target.value as any })}
               aria-label="Статус лида"
-              className="min-h-10 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-slate-700 font-medium"
+              className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-slate-200 font-medium"
             >
               <option value="all">Все статусы</option>
               <option value="new">Новые</option>
@@ -135,13 +135,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           {/* Lead Quality */}
           <div className={`flex gap-1.5 ${isSidebar ? 'flex-col' : 'items-center'}`}>
-            <span className="text-slate-500 font-medium">Приоритет:</span>
+            <span className="text-slate-400 font-medium">Приоритет:</span>
             <select
               id="filter-quality-select"
               value={filter.quality}
               onChange={(e) => onChangeFilter({ ...filter, quality: e.target.value as any })}
               aria-label="Приоритет лида"
-              className="min-h-10 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-slate-700 font-medium"
+              className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-slate-200 font-medium"
             >
               <option value="all">Любой</option>
               <option value="hot">🔥 Горячий</option>
@@ -151,7 +151,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
 
           {/* Phone only checkbox */}
-          <label className="flex items-center gap-2 rounded-lg px-1 py-2 text-slate-600 font-medium cursor-pointer">
+          <label className="flex items-center gap-2 rounded-lg px-1 py-2 text-slate-300 font-medium cursor-pointer">
             <input
               type="checkbox"
               checked={filter.phoneOnly}
@@ -165,12 +165,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         {/* Sort By */}
         <div className={`flex gap-1.5 ${isSidebar ? 'flex-col' : 'items-center xl:ml-auto'}`}>
           <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-500 font-medium">Сортировка:</span>
+          <span className="text-slate-400 font-medium">Сортировка:</span>
           <select
             id="filter-sort-select"
             value={filter.sortBy}
             onChange={(e) => onChangeFilter({ ...filter, sortBy: e.target.value as any })}
-            className="min-h-10 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-slate-700 font-medium"
+            className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-slate-200 font-medium"
           >
             <option value="relevance">По релевантности</option>
             <option value="rating_desc">По рейтингу (высокий сначала)</option>
@@ -183,14 +183,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* Batch Actions Bar (when items selected) */}
       {selectedCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs">
-          <div className="flex items-center gap-2 font-semibold text-indigo-900">
-            <CheckSquare className="h-4 w-4 text-indigo-600" />
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-400/30 bg-indigo-500/10 p-3 text-xs">
+          <div className="flex items-center gap-2 font-semibold text-indigo-100">
+            <CheckSquare className="h-4 w-4 text-indigo-300" />
             <span>Выбрано: {selectedCount} из {totalFilteredCount}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-blue-800 font-medium">Установить статус:</span>
+            <span className="text-blue-200 font-medium">Установить статус:</span>
             <select
               onChange={(e) => {
                 if (e.target.value) {
@@ -199,7 +199,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 }
               }}
               defaultValue=""
-              className="bg-white border border-blue-300 rounded px-2 py-1 text-xs font-semibold text-slate-800"
+              className="rounded border border-blue-400/40 bg-slate-900 px-2 py-1 text-xs font-semibold text-slate-100"
             >
               <option value="" disabled>Изменить статус...</option>
               <option value="contacted">Связались</option>

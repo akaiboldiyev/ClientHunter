@@ -270,7 +270,7 @@ export function App() {
   };
 
   return (
-    <div className="signal-canvas min-h-dvh text-slate-900 flex flex-col">
+    <div className="signal-canvas min-h-dvh text-slate-100 flex flex-col">
       {/* Top Navigation */}
       <Navbar
         leads={leads}
@@ -281,7 +281,7 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-[90rem] w-full mx-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
         {storageNotice && (
-          <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-start justify-between gap-3">
+          <div role="alert" className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             <span>{storageNotice}</span>
             <button type="button" onClick={() => setStorageNotice(null)} className="font-semibold underline underline-offset-2">Закрыть</button>
           </div>
@@ -311,7 +311,7 @@ export function App() {
           <div>
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">База лидов</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">База лидов</p>
                 <h2 className="mt-1 text-2xl font-bold tracking-tight text-white">Компании для контакта</h2>
               </div>
               <span className="rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-xs font-semibold text-blue-100 tabular-nums">{filteredLeads.length} в выборке</span>
@@ -363,9 +363,9 @@ export function App() {
           </>
         ) : (
           filteredLeads.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-2xs">
-              <h3 className="text-base font-bold text-slate-900">Компании не найдены</h3>
-              <p className="mt-1 text-sm text-slate-500">Измените параметры фильтра или запустите новый поиск.</p>
+            <div className="rounded-2xl border border-slate-700 bg-slate-950/80 p-12 text-center shadow-2xs">
+              <h3 className="text-base font-bold text-white">Компании не найдены</h3>
+              <p className="mt-1 text-sm text-slate-400">Измените параметры фильтра или запустите новый поиск.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -56,14 +56,14 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
         {/* Header */}
         <div className="ui-modal-header">
           <div className="min-w-0 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-100 text-blue-700">
-              <Sparkles className="w-5 h-5 text-blue-600" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-400/30 bg-blue-500/15 text-blue-200">
+              <Sparkles className="w-5 h-5 text-blue-300" />
             </div>
             <div>
-              <h3 id="pitch-title" className="text-balance text-base font-bold text-slate-950">
+              <h3 id="pitch-title" className="text-balance text-base font-bold text-white">
                 Скрипты продаж для {lead.name}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 {lead.city} • {lead.category} • {lead.rating}★ ({lead.reviews} отзывов)
               </p>
             </div>
@@ -79,7 +79,7 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
         </div>
 
         {/* Template Channel Tabs */}
-        <div className="grid grid-cols-2 gap-1.5 border-b border-slate-200 bg-slate-50 p-3 text-xs font-semibold sm:flex sm:flex-wrap sm:items-center">
+        <div className="grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-slate-900/80 p-3 text-xs font-semibold sm:flex sm:flex-wrap sm:items-center">
           {templates.map((tpl) => {
             const isActive = tpl.id === selectedTemplateId;
             return (
@@ -88,8 +88,8 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
                 onClick={() => setSelectedTemplateId(tpl.id)}
                 className={`min-h-9 rounded-lg px-3 py-1.5 flex items-center justify-center gap-1.5 whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-white text-blue-700 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                    ? 'bg-blue-500/15 text-blue-100 shadow-2xs ring-1 ring-blue-400/30'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 {tpl.channel === 'whatsapp' && <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />}
@@ -104,15 +104,15 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
-          {copyError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{copyError}</p>}
+          {copyError && <p role="alert" className="rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{copyError}</p>}
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
               {activeTemplate.title}
             </span>
 
             <button
               onClick={() => handleCopy(activeTemplate.text, activeTemplate.id)}
-              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-slate-700"
             >
               {copiedId === activeTemplate.id ? (
                 <>
@@ -128,23 +128,23 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
             </button>
           </div>
 
-          <div className="break-words rounded-2xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs leading-relaxed text-slate-800 whitespace-pre-wrap sm:text-sm">
+          <div className="break-words whitespace-pre-wrap rounded-2xl border border-slate-700 bg-slate-900 p-4 font-mono text-xs leading-relaxed text-slate-200 sm:text-sm">
             {activeTemplate.text}
           </div>
 
           {/* Quick tips */}
-          <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-amber-900 space-y-1">
+          <div className="space-y-1 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
             <p className="font-semibold">💡 Совет по первому контакту:</p>
-            <p className="text-amber-800/90">
+            <p className="text-amber-200/90">
               Всегда делайте акцент на их высоком рейтинге ({lead.rating}★ на картах) — это растапливает лед. Покажите, что потеря клиентов из-за отсутствия сайта решается за 2-3 дня.
             </p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-xs text-slate-500">
-            Телефон для связи: <strong className="text-slate-800">{lead.phone || 'Не указан'}</strong>
+        <div className="flex flex-col gap-3 border-t border-slate-800 bg-slate-900/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs text-slate-400">
+            Телефон для связи: <strong className="text-slate-100">{lead.phone || 'Не указан'}</strong>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

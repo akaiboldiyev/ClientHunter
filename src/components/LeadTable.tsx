@@ -43,11 +43,11 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   if (leads.length === 0) {
     return (
       <div className="ui-panel p-12 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-600">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-400/30 bg-indigo-500/10 text-indigo-300">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h3 className="mb-1 text-base font-bold text-slate-950">Компании не найдены</h3>
-        <p className="mx-auto max-w-md text-sm leading-6 text-slate-500">
+        <h3 className="mb-1 text-base font-bold text-white">Компании не найдены</h3>
+        <p className="mx-auto max-w-md text-sm leading-6 text-slate-400">
           По текущим фильтрам нет подходящих организаций. Попробуйте изменить параметры поиска или запустить парсинг нового города.
         </p>
       </div>
@@ -59,7 +59,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs sm:text-sm">
           <thead>
-            <tr className="select-none border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
+            <tr className="select-none border-b border-slate-700 bg-slate-900/90 text-xs font-semibold text-slate-300">
               <th className="py-3.5 pl-4 pr-2 w-10">
                 <input
                   type="checkbox"
@@ -77,7 +77,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
               <th className="min-w-[130px] px-3 py-3.5 pr-4 text-right">Действия</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
+          <tbody className="divide-y divide-slate-800 font-normal text-slate-200">
             {leads.map((lead) => {
               const isSelected = selectedIds.includes(lead.id);
               const cleanPhone = (lead.phone || '').replace(/[^\d+]/g, '');
@@ -85,8 +85,8 @@ export const LeadTable: React.FC<LeadTableProps> = ({
               return (
                 <tr
                   key={lead.id}
-                  className={`transition-colors hover:bg-indigo-50/50 ${
-                    isSelected ? 'bg-indigo-50/70' : ''
+                  className={`transition-colors hover:bg-slate-800/70 ${
+                    isSelected ? 'bg-indigo-500/10' : ''
                   }`}
                 >
                   {/* Select Checkbox */}
@@ -106,7 +106,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => onOpenDetail(lead)}
-                          className="text-left text-sm font-bold leading-5 text-slate-950 transition-colors hover:text-blue-700"
+                          className="text-left text-sm font-bold leading-5 text-slate-50 transition-colors hover:text-blue-300"
                         >
                           {lead.name}
                         </button>
@@ -117,7 +117,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
                         <span className="flex max-w-[185px] items-center gap-1 truncate">
                           <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate">{lead.address || `${lead.city}, ${lead.category}`}</span>
@@ -143,7 +143,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                       <div className="flex items-center gap-1.5">
                         <a
                           href={`tel:${cleanPhone}`}
-                          className="font-medium text-slate-800 hover:text-blue-600 transition-colors"
+                          className="font-medium text-slate-200 hover:text-blue-300 transition-colors"
                         >
                           {lead.phone}
                         </a>
@@ -152,22 +152,22 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                           target="_blank"
                           rel="noreferrer"
                           aria-label={`Написать ${lead.name} в WhatsApp`}
-                          className="ui-icon-button min-h-9 min-w-9 rounded-lg p-1 text-emerald-600 hover:bg-emerald-50"
+                          className="ui-icon-button min-h-9 min-w-9 rounded-lg p-1 text-emerald-400 hover:bg-emerald-500/10"
                           title="Написать в WhatsApp"
                         >
                           <Send className="w-3.5 h-3.5" />
                         </a>
                       </div>
                     ) : (
-                      <span className="text-slate-400 italic text-xs">Не указан</span>
+                      <span className="text-slate-500 italic text-xs">Не указан</span>
                     )}
                   </td>
 
                   {/* Website Detection Badge */}
                   <td className="py-3 px-3">
                     {!lead.hasWebsite ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-950">
-                        <GlobeX className="w-3.5 h-3.5 text-amber-700" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-100">
+                        <GlobeX className="w-3.5 h-3.5 text-amber-300" />
                         <span>НЕТ САЙТА</span>
                       </span>
                     ) : (
@@ -175,7 +175,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                         href={lead.website}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex max-w-[140px] items-center gap-1.5 truncate rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+                        className="inline-flex max-w-[140px] items-center gap-1.5 truncate rounded-full bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-200 transition-colors hover:bg-slate-700"
                       >
                         <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                         <span className="truncate">{lead.website.replace(/^https?:\/\/(www\.)?/, '')}</span>
@@ -186,11 +186,11 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                   {/* Rating & Reviews */}
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 font-bold text-slate-900">
+                      <div className="flex items-center gap-1 font-bold text-slate-100">
                         <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                         <span>{lead.rating || 0}</span>
                       </div>
-                      <span className="text-slate-500 text-xs">
+                      <span className="text-slate-400 text-xs">
                         ({lead.reviews || 0} отз.)
                       </span>
                     </div>
@@ -232,7 +232,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                       <button
                       onClick={() => onOpenDetail(lead)}
                         aria-label={`Открыть заметки: ${lead.name}`}
-                        className="ui-icon-button min-h-9 min-w-9 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        className="ui-icon-button min-h-9 min-w-9 rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
                         title="Подробная информация и заметки"
                       >
                         <MessageSquare className="w-4 h-4" />
@@ -242,7 +242,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                       <button
                       onClick={() => onDeleteLead(lead.id)}
                         aria-label={`Удалить лид: ${lead.name}`}
-                        className="ui-icon-button min-h-9 min-w-9 rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                        className="ui-icon-button min-h-9 min-w-9 rounded-lg p-1.5 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300"
                         title="Удалить лид"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -262,18 +262,18 @@ export const LeadTable: React.FC<LeadTableProps> = ({
 function getStatusStyle(status: BusinessLead['status']): string {
   switch (status) {
     case 'new':
-      return 'bg-blue-50 text-blue-700 border-blue-200';
+      return 'bg-blue-500/15 text-blue-200 border-blue-400/35';
     case 'contacted':
-      return 'bg-amber-50 text-amber-700 border-amber-200';
+      return 'bg-amber-500/15 text-amber-200 border-amber-400/35';
     case 'meeting':
-      return 'bg-purple-50 text-purple-700 border-purple-200';
+      return 'bg-violet-500/15 text-violet-200 border-violet-400/35';
     case 'negotiation':
-      return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      return 'bg-indigo-500/15 text-indigo-200 border-indigo-400/35';
     case 'won':
-      return 'bg-emerald-50 text-emerald-800 border-emerald-300';
+      return 'bg-emerald-500/15 text-emerald-200 border-emerald-400/35';
     case 'lost':
-      return 'bg-slate-100 text-slate-600 border-slate-300';
+      return 'bg-slate-800 text-slate-300 border-slate-600';
     default:
-      return 'bg-slate-50 text-slate-700 border-slate-200';
+      return 'bg-slate-800 text-slate-200 border-slate-700';
   }
 }
