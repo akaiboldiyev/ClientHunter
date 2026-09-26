@@ -1,66 +1,95 @@
-# LeadScout — ClientHunter
+# LeadScout
 
-Интерфейс для ведения лидов: поиск, фильтрация, статусы CRM, заметки и экспорт в Excel/CSV. Данные хранятся локально в браузере.
+LeadScout — локальный инструмент для поиска потенциальных клиентов через публичные карточки 2GIS: компаний с публичным телефоном и без собственного сайта.
 
-## Стек и устройство
+> LeadScout не обходит CAPTCHA. Если 2GIS просит проверку, пройдите её вручную в открытом Chromium.
 
-- React 18, TypeScript и Vite — интерфейс.
-- Express — единая точка входа для интерфейса и внутренних API (`/api/health`, `/api/info`).
-- SheetJS — экспорт данных в Excel.
+## Возможности
 
-Клиент не обращается к Gemini и не содержит API-ключей. Текущий поиск в интерфейсе генерирует демонстрационные результаты локально; отдельные Python-скрипты в рабочем каталоге запускаются самостоятельно и не подключены к веб-интерфейсу.
+- Реальный поиск 2GIS через Playwright, несколько категорий и Select All.
+- Реальные телефоны, сайт и WhatsApp только при явной ссылке в карточке.
+- Фильтр «без сайта + есть телефон», SQLite persistence, дедупликация, progress и cancellation.
+- CRM statuses, notes и CSV/XLSX export.
 
 ## Требования
 
-- Node.js 20 или новее.
-- npm 10 или новее.
+- Node.js 22+ (используется `node:sqlite`), npm.
+- Python 3.10+.
+- Chromium для Python Playwright.
 
-## Запуск в разработке
+## Установка в Windows
 
-1. Установите зависимости:
+### Скачать проект
 
-   ```bash
-   npm install
-   ```
-
-2. При необходимости скопируйте `.env.example` в `.env` и настройте порт. Файл `.env` не добавляется в Git.
-
-3. Запустите приложение:
-
-   ```bash
-   npm run dev
-   ```
-
-4. Откройте `http://localhost:3000`.
-
-## Сборка и запуск production-версии
-
-```bash
-npm run lint
-npm run build
-npm start
+```powershell
+git clone https://github.com/akaiboldiyev/ClientHunter.git
+cd ClientHunter
 ```
 
-`npm run build` создаёт папку `dist`, а `npm start` обслуживает собранный интерфейс и API на одном origin.
+Либо выберите **Code → Download ZIP**, распакуйте архив и откройте PowerShell в папке.
 
-## Переменные окружения
+### Быстрый старт
 
-| Переменная | Назначение | Значение по умолчанию |
-| --- | --- | --- |
-| `PORT` | Порт Express-сервера | `3000` |
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup.ps1
+.\start.ps1
+```
 
-Не используйте `VITE_*` для секретов: такие значения встраиваются в клиентский JavaScript. Если в будущем понадобится Gemini или другой сервис с секретным ключом, вызов должен выполняться только сервером, а ключ — храниться только в `.env` на стороне сервера.
+### Ручная установка
 
-## Проверки качества
+```powershell
+npm install
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+Copy-Item .env.example .env
+npm run dev
+```
 
-```bash
+Откройте http://localhost:3000. Default provider — `TWOGIS_PROVIDER=playwright`; API key не нужен. Официальный API — только optional developer configuration.
+
+## Первый поиск
+
+1. Укажите город, например `Актау`.
+2. Выберите категории и лимит на весь запуск.
+3. Нажмите поиск. Chromium откроется автоматически; не закрывайте его во время работы.
+4. При CAPTCHA пройдите проверку вручную.
+5. Используйте фильтр «без сайта + есть телефон».
+
+## Данные и экспорт
+
+Лиды хранятся локально в `runtime/leadscout.sqlite`, остаются между перезапусками и не попадают в Git. Кнопки Excel/CSV скачивают export через браузер в обычную папку Downloads.
+
+## Troubleshooting
+
+### Port 3000 already in use
+
+```powershell
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+```
+
+### Chromium не установлен
+
+```powershell
+python -m playwright install chromium
+```
+
+### Python command not found
+
+Установите Python 3.10+ с опцией **Add Python to PATH**, затем откройте новый PowerShell.
+
+### CAPTCHA или временная ошибка 2GIS
+
+Пройдите проверку в Chromium или повторите поиск позже. LeadScout не создаёт подменённые результаты.
+
+## Development
+
+```powershell
 npm run lint
+npm test
+npm run test:providers
 npm run build
 ```
 
-## Безопасность данных
-
-- `.env`, зависимости, сборка, Python-кэш и локальные выгрузки исключены через `.gitignore`.
-- Сервер не включает открытый CORS и отправляет базовые защитные HTTP-заголовки.
-- Внешние ссылки открываются в отдельной вкладке с `rel="noreferrer"`.
-- Поле сайта принимает только `http://` и `https://` URL; ошибки формы отображаются в интерфейсе.
+`server.ts` — HTTP API; `src/` — React UI; `scrapers/two_gis.py` — Playwright provider; `persistence.ts` — SQLite; `src/utils/leadData.ts` — normalization/deduplication.

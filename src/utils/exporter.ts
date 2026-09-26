@@ -6,6 +6,7 @@ export function exportToExcel(leads: BusinessLead[], filename = 'results.xlsx'):
     '№': idx + 1,
     'Название компании': lead.name,
     'Телефон': lead.phone || 'Не указан',
+    'WhatsApp': lead.whatsappStatus ?? 'unknown',
     'Адрес': lead.address || '',
     'Сайт': lead.website || 'НЕТ САЙТА (Потенциальный клиент)',
     'Рейтинг': lead.rating || 0,
@@ -14,7 +15,7 @@ export function exportToExcel(leads: BusinessLead[], filename = 'results.xlsx'):
     'Категория': lead.category,
     'Качество лида': lead.hasWebsite ? 'Сайт есть' : (lead.leadQuality === 'hot' ? '🔥 Горячий лид' : '⚡ Теплый лид'),
     'Статус сделки': getStatusLabel(lead.status),
-    'Ссылка Google Maps': lead.maps_url,
+    'Ссылка 2GIS': lead.maps_url,
     'Заметки': lead.notes || '',
     'Дата добавления': new Date(lead.scrapedAt).toLocaleDateString('ru-RU')
   }));
@@ -47,11 +48,12 @@ export function exportToExcel(leads: BusinessLead[], filename = 'results.xlsx'):
 }
 
 export function exportToCSV(leads: BusinessLead[], filename = 'results.csv'): void {
-  const headers = ['Название', 'Телефон', 'Адрес', 'Сайт', 'Рейтинг', 'Отзывы', 'Город', 'Категория', 'Статус', 'Maps URL', 'Заметки'];
+  const headers = ['Название', 'Телефон', 'WhatsApp', 'Адрес', 'Сайт', 'Рейтинг', 'Отзывы', 'Город', 'Категория', 'Статус CRM', '2GIS URL', 'Заметки'];
   
   const rows = leads.map(l => [
     `"${(l.name || '').replace(/"/g, '""')}"`,
     `"${(l.phone || '').replace(/"/g, '""')}"`,
+    `"${l.whatsappStatus ?? 'unknown'}"`,
     `"${(l.address || '').replace(/"/g, '""')}"`,
     `"${(l.website || '').replace(/"/g, '""')}"`,
     l.rating || 0,

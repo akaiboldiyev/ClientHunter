@@ -1,24 +1,22 @@
 import React from 'react';
-import { Target, FileSpreadsheet, Plus, RefreshCw } from 'lucide-react';
+import { Target, FileSpreadsheet, Plus } from 'lucide-react';
 import { BusinessLead } from '../types';
 import { exportToExcel, exportToCSV } from '../utils/exporter';
 
 interface NavbarProps {
   leads: BusinessLead[];
   onOpenAddModal: () => void;
-  onResetToDemo: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   leads,
-  onOpenAddModal,
-  onResetToDemo
+  onOpenAddModal
 }) => {
   const withoutWebCount = leads.filter(l => !l.hasWebsite).length;
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/95 shadow-lg shadow-slate-950/20 backdrop-blur-xl">
-      <div className="mx-auto flex min-h-[4.5rem] max-w-[90rem] items-center justify-between gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:px-8">
+      <div className="flex min-h-[68px] w-full items-center justify-between gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:px-6 xl:px-8">
         {/* Brand */}
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
@@ -32,24 +30,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
             <p className="hidden text-xs text-slate-400 sm:block">
-              Парсер и поиск клиентов без сайта на Google Maps & 2GIS
+              Реальные лиды 2GIS без сайта и с телефоном
             </p>
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
-          <button
-            id="reset-demo-btn"
-            onClick={onResetToDemo}
-            title="Восстановить исходные данные"
-            aria-label="Восстановить демонстрационные данные"
-            className="ui-icon-button gap-1.5 border border-white/15 bg-white/5 px-2 text-xs text-slate-200 hover:bg-white/10 hover:text-white"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="hidden md:inline">Демо-база</span>
-          </button>
-
           <button
             id="add-manual-lead-btn"
             onClick={onOpenAddModal}

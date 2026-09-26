@@ -19,8 +19,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
   const [website, setWebsite] = useState('');
   const [city, setCity] = useState('Актау');
   const [category, setCategory] = useState('стоматология');
-  const [rating, setRating] = useState(4.8);
-  const [reviews, setReviews] = useState(15);
+  const [rating, setRating] = useState(0);
+  const [reviews, setReviews] = useState(0);
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState('');
 
@@ -32,8 +32,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
     setWebsite('');
     setCity('Актау');
     setCategory('стоматология');
-    setRating(4.8);
-    setReviews(15);
+    setRating(0);
+    setReviews(0);
     setNotes('');
     setFormError('');
   }, [isOpen]);
@@ -63,7 +63,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
       category: category.trim() || 'бизнес',
       rating: rating || 0,
       reviews: reviews || 0,
-      maps_url: `https://www.google.com/maps/search/${encodeURIComponent(name + ' ' + city)}`,
+      maps_url: '',
       source: 'manual',
       scrapedAt: new Date().toISOString(),
       hasWebsite: hasWeb,

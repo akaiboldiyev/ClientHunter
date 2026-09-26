@@ -34,36 +34,31 @@ export const LeadCard: React.FC<LeadCardProps> = ({
   onDeleteLead
 }) => {
   const cleanPhone = (lead.phone || '').replace(/[^\d+]/g, '');
+  const initials = lead.name.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
 
   return (
     <div
-      className={`ui-panel relative flex flex-col justify-between p-4 transition-all duration-200 sm:p-5 ${
+      className={`ui-panel relative flex min-h-[326px] flex-col justify-between p-4 transition-all duration-200 ${
         isSelected
-          ? 'border-indigo-500 shadow-md ring-1 ring-indigo-500/30'
-          : 'hover:-translate-y-0.5 hover:border-slate-600 hover:shadow-md'
+          ? 'border-blue-400/70 shadow-[0_12px_36px_rgb(43_99_255/20%)] ring-1 ring-blue-400/30'
+          : 'hover:-translate-y-0.5 hover:border-slate-600 hover:shadow-[var(--shadow-panel)]'
       }`}
     >
       {/* Top Header */}
       <div>
-        <div className="flex items-start justify-between gap-3 mb-2.5">
-          <div className="flex min-w-0 items-start gap-2">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <input
               type="checkbox"
               checked={isSelected}
               onChange={() => onToggleSelect(lead.id)}
-              className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 mt-0.5"
+              className="mt-1 h-4 w-4 rounded border-slate-500 bg-[var(--surface-3)] text-blue-500"
             />
-            <button
-              type="button"
-              onClick={() => onOpenDetail(lead)}
-              className="text-left text-base font-bold leading-tight text-white transition-colors hover:text-blue-300"
-            >
-              {lead.name}
-            </button>
+            <div className="flex min-w-0 gap-2.5"><span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(145deg,#16284b,#0d1830)] text-xs font-bold text-blue-200 ring-1 ring-white/10">{initials}</span><button type="button" onClick={() => onOpenDetail(lead)} className="text-left text-[15px] font-semibold leading-5 text-white transition-colors hover:text-blue-300">{lead.name}</button></div>
           </div>
 
           {lead.leadQuality === 'hot' && !lead.hasWebsite && (
-            <span className="flex shrink-0 items-center gap-1 rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
+            <span className="flex shrink-0 items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800">
               <Flame className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
               HOT
             </span>
@@ -71,9 +66,9 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         </div>
 
         {/* Website status badge & City */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           {!lead.hasWebsite ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-100">
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
               <GlobeX className="w-3.5 h-3.5 text-amber-300" />
               <span>НЕТ САЙТА</span>
             </span>
@@ -89,19 +84,19 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             </a>
           )}
 
-          <span className="rounded-md bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
+          <span className="rounded-md bg-[var(--surface-3)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
             {lead.city} • {lead.category}
           </span>
         </div>
 
         {/* Address & Maps */}
-        <div className="mb-4 space-y-1.5 text-xs text-slate-300">
+        <div className="mb-4 space-y-1.5 text-xs text-[var(--text-secondary)]">
           <div className="flex items-start gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
             <span className="line-clamp-2">{lead.address || 'Адрес не указан'}</span>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1 font-bold text-slate-100">
               <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
               <span>{lead.rating || 0}</span>
@@ -124,26 +119,26 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
         {/* Notes preview if exists */}
         {lead.notes && (
-          <div className="mb-4 rounded-lg border border-slate-800 bg-slate-900/80 p-2.5 text-xs italic text-slate-300 line-clamp-2">
+          <div className="mb-4 rounded-xl bg-[#070d1a] p-2.5 text-xs italic leading-[1.45] text-[var(--text-secondary)] line-clamp-2">
             "{lead.notes}"
           </div>
         )}
       </div>
 
       {/* Footer / Actions */}
-      <div className="flex flex-col gap-2.5 border-t border-slate-800 pt-3">
+      <div className="flex flex-col gap-2.5 border-t pt-3">
         {/* Phone & WhatsApp Quick Connect */}
         <div className="flex items-center justify-between gap-2">
           {lead.phone ? (
             <div className="flex items-center gap-2">
               <a
                 href={`tel:${cleanPhone}`}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-100 hover:text-blue-300"
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-100 hover:text-blue-300"
               >
                 <Phone className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{lead.phone}</span>
               </a>
-              <a
+              {lead.whatsappStatus === 'available' && <a
                 href={`https://wa.me/${cleanPhone.replace('+', '')}`}
                 target="_blank"
                 rel="noreferrer"
@@ -152,7 +147,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                 title="Написать в WhatsApp"
               >
                 <Send className="w-3.5 h-3.5" />
-              </a>
+              </a>}
             </div>
           ) : (
             <span className="text-xs text-slate-400 italic">Телефон не указан</span>
@@ -163,14 +158,14 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             value={lead.status}
             onChange={(e) => onChangeStatus(lead.id, e.target.value as any)}
             aria-label={`Статус CRM: ${lead.name}`}
-            className="min-h-9 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs font-semibold text-slate-200"
+            className="min-h-9 rounded-lg border bg-[var(--surface-3)] px-2 py-1 text-xs font-semibold text-slate-200"
           >
-            <option value="new">🆕 Новый</option>
-            <option value="contacted">📞 Связались</option>
-            <option value="meeting">🤝 Встреча</option>
-            <option value="negotiation">💼 Переговоры</option>
-            <option value="won">🏆 Выиграно</option>
-            <option value="lost">❌ Отказ</option>
+            <option value="new">Новый</option>
+            <option value="contacted">Связались</option>
+            <option value="meeting">Встреча</option>
+            <option value="negotiation">Переговоры</option>
+            <option value="won">Выиграно</option>
+            <option value="lost">Отказ</option>
           </select>
         </div>
 

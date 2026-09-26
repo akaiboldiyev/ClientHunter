@@ -11,9 +11,29 @@ dist/
 # Python runtime output
 __pycache__/
 *.py[cod]
+runtime/
+debug/
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-shm
+*.sqlite-wal
+cookies/
+sessions/
+playwright/.auth/
+*.html
+*.png
+*.jpg
+*.jpeg
+*.webp
+ux-review/
+design-reference.png
 
 # Locally generated exports and Office lock files
 results.xlsx
 results.csv
 results.json
+*.csv
+*.xlsx
+*.jsonl
 ~$*.xlsx

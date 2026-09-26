@@ -9,35 +9,21 @@ import { OutreachPitchModal } from './components/OutreachPitchModal';
 import { LeadDetailModal } from './components/LeadDetailModal';
 import { AddLeadModal } from './components/AddLeadModal';
 import { BusinessLead, SearchQuery, ScrapingProgress, LeadFilter } from './types';
-import { INITIAL_LEADS, generateScrapedLeads } from './data/mockDatabase';
-
-const STORAGE_KEY = 'leadscout_leads_data_v1';
-
-function loadLeads(): BusinessLead[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return INITIAL_LEADS;
-
-    const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed : INITIAL_LEADS;
-  } catch {
-    return INITIAL_LEADS;
-  }
-}
+import { hydrateLead, mergeLeads } from './utils/leadData';
 
 export function App() {
-  const [leads, setLeads] = useState<BusinessLead[]>(loadLeads);
+  const [leads, setLeads] = useState<BusinessLead[]>([]);
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
+  const searchAbort = useRef<AbortController | null>(null);
 
-  // Save leads to local storage
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
-    } catch {
-      setStorageNotice('Изменения не удалось сохранить в этом браузере. Не закрывайте страницу, пока не экспортируете данные.');
-    }
-  }, [leads]);
+    fetch('/api/leads').then(async (response) => {
+      if (!response.ok) throw new Error();
+      const payload = await response.json();
+      setLeads(Array.isArray(payload.leads) ? payload.leads.map(hydrateLead) : []);
+    }).catch(() => setStorageNotice('Не удалось загрузить локальную базу сервера. Проверьте, что LeadScout server запущен.'));
+  }, []);
 
   useEffect(() => () => timers.current.forEach(window.clearTimeout), []);
 
@@ -57,14 +43,17 @@ export function App() {
   // Filter state
   const [filter, setFilter] = useState<LeadFilter>({
     search: '',
-    websiteFilter: 'all',
-    phoneOnly: false,
+    websiteFilter: 'without_website',
+    phoneOnly: true,
     minRating: 0,
     quality: 'all',
     status: 'all',
     category: '',
-    city: '',
-    sortBy: 'relevance'
+    categories: ['стоматология'],
+    city: 'Актау',
+    sortBy: 'relevance',
+    source: 'all',
+    contact: 'all'
   });
 
   // Scraping progress
@@ -83,75 +72,70 @@ export function App() {
   const [detailLead, setDetailLead] = useState<BusinessLead | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Handle start scraping simulation (matches python main.py steps)
-  const handleStartScraping = useCallback((query: SearchQuery) => {
+  const handleStartScraping = useCallback(async (query: SearchQuery) => {
     if (progress.isScraping) return;
-
-    const queryStr = `${query.city} ${query.category}`;
+    const categories = query.categories;
+    const queryStr = `${query.city} • ${categories.length} категорий`;
+    const controller = new AbortController();
+    searchAbort.current = controller;
     setProgress({
       isScraping: true,
       stage: 'initializing',
-      progress: 10,
+      progress: 0,
       currentQuery: queryStr,
       foundCount: 0,
       withoutWebsiteCount: 0,
-      statusMessage: `Инициализация браузера и открытие ${query.source === '2gis' ? '2GIS' : 'Google Maps'}...`
+      statusMessage: `2GIS • категория 0 / ${categories.length}`,
+      completedCategories: [], failedCategories: []
     });
-
-    // Step 1: Consent & Search
-    timers.current.forEach(window.clearTimeout);
-    timers.current = [window.setTimeout(() => {
-      setProgress(prev => ({
-        ...prev,
-        stage: 'searching',
-        progress: 30,
-        statusMessage: `Прохождение cookie consent и ввод поискового запроса: "${queryStr}"...`
-      }));
-    }, 900)];
-
-    // Step 2: Feed scrolling & parsing
-    timers.current.push(window.setTimeout(() => {
-      setProgress(prev => ({
-        ...prev,
-        stage: 'parsing_places' as any,
-        progress: 60,
-        statusMessage: `Прокрутка ленты результатов и извлечение карточек организаций...`
-      }));
-    }, 1800));
-
-    // Step 3: Contact extraction & website verification
-    timers.current.push(window.setTimeout(() => {
-      setProgress(prev => ({
-        ...prev,
-        stage: 'detecting_websites' as any,
-        progress: 85,
-        statusMessage: `Проверка наличия веб-сайтов и извлечение телефонов из панелей...`
-      }));
-    }, 2700));
-
-    // Step 4: Complete & add leads (deduplicated like in main.py)
-    timers.current.push(window.setTimeout(() => {
-      const generated = generateScrapedLeads(query);
-      const noWebCount = generated.filter(l => !l.hasWebsite).length;
-
-      setLeads(prevLeads => {
-        // Deduplicate against existing by name + phone
-        const existingKeys = new Set(prevLeads.map(l => `${l.name.toLowerCase().trim()}|${(l.phone || '').trim()}`));
-        const fresh = generated.filter(g => !existingKeys.has(`${g.name.toLowerCase().trim()}|${(g.phone || '').trim()}`));
-        return [...fresh, ...prevLeads];
-      });
-
-      setProgress({
-        isScraping: false,
-        stage: 'completed',
-        progress: 100,
-        currentQuery: queryStr,
-        foundCount: generated.length,
-        withoutWebsiteCount: noWebCount,
-        statusMessage: `Парсинг успешно завершен! Найдено ${generated.length} компаний, из них без сайта: ${noWebCount}.`
-      });
-    }, 3500));
+    const results: BusinessLead[] = [];
+    const completed: string[] = [];
+    const failed: string[] = [];
+    for (let categoryIndex = 0; categoryIndex < categories.length && !controller.signal.aborted; categoryIndex += 1) {
+      const category = categories[categoryIndex];
+      const remaining = query.limit - results.length;
+      if (remaining <= 0) break;
+      const categoriesRemaining = categories.length - categoryIndex;
+      const categoryBudget = Math.ceil(remaining / categoriesRemaining);
+      let processed = 0;
+      let categoryTotal = 0;
+      try {
+        const response = await fetch('/api/search/2gis/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city: query.city, category, limit: categoryBudget }), signal: controller.signal });
+        if (!response.ok || !response.body) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || 'Ошибка 2GIS'); }
+        const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+        while (!controller.signal.aborted) {
+          const { value, done } = await reader.read(); if (done) break;
+          buffer += decoder.decode(value, { stream: true }); const lines = buffer.split(/\r?\n/); buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line);
+            if (event.event === 'lead') {
+              const lead = hydrateLead(event.lead); results.push(lead); processed = Number(event.openedCards ?? processed); categoryTotal = Number(event.total ?? categoryTotal);
+              setLeads((previous) => mergeLeads([lead, ...previous]));
+              const suitable = results.filter((item) => !item.hasWebsite && Boolean(item.phones?.length)).length;
+              setProgress((current) => ({ ...current, stage: 'extracting_contacts', currentCategory: category, categoryIndex: categoryIndex + 1, totalCategories: categories.length, processedCount: results.length, totalAvailable: categoryTotal, foundCount: results.length, suitableCount: suitable, withoutWebsiteCount: results.filter((item) => !item.hasWebsite).length, progress: Math.round((results.length / query.limit) * 100), statusMessage: `${category} • найдено в 2GIS ${categoryTotal || '…'} • обработано всего ${results.length} / ${query.limit} • подходящих лидов ${suitable}` }));
+            } else if (event.event === 'verification_required') throw new Error('2GIS просит пройти CAPTCHA в открытом окне. Уже обработанные лиды сохранены.');
+            else if (event.event === 'error') throw new Error(event.error || 'Ошибка Playwright provider');
+          }
+        }
+        completed.push(category);
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        failed.push(category);
+      }
+      const done = completed.length + failed.length;
+      setProgress((current) => ({ ...current, stage: 'searching', progress: Math.round((done / categories.length) * 100), completedCategories: [...completed], failedCategories: [...failed], statusMessage: `2GIS • категория ${done} / ${categories.length} • всего лидов ${mergeLeads(results).length}` }));
+    }
+    if (controller.signal.aborted) {
+      setProgress((current) => ({ ...current, isScraping: false, stage: 'completed', statusMessage: 'Поиск остановлен. Уже найденные результаты сохранены.' }));
+      return;
+    }
+    const deduplicated = mergeLeads(results);
+    setLeads((previous) => mergeLeads([...deduplicated, ...previous]));
+    setProgress({ isScraping: false, stage: 'completed', progress: 100, currentQuery: queryStr, foundCount: deduplicated.length, rawCount: results.length, deduplicatedCount: deduplicated.length, withoutWebsiteCount: deduplicated.filter((lead) => !lead.hasWebsite).length, phoneCount: deduplicated.filter((lead) => lead.phones?.length).length, mobileCount: deduplicated.filter((lead) => lead.phones?.some((phone) => phone.type === 'mobile')).length, confirmedWhatsAppCount: deduplicated.filter((lead) => lead.whatsappStatus === 'available').length, completedCategories: completed, failedCategories: failed, statusMessage: failed.length ? 'Поиск завершён с частичными ошибками.' : 'Поиск завершён.' });
   }, [progress.isScraping]);
+
+  const handleStopScraping = useCallback(() => searchAbort.current?.abort(), []);
 
   // Filtered and sorted leads
   const filteredLeads = useMemo(() => {
@@ -178,7 +162,8 @@ export function App() {
         if (filter.phoneOnly && (!lead.phone || lead.phone.trim().length === 0)) return false;
 
         if (filter.minRating > 0 && lead.rating < filter.minRating) return false;
-        if (filter.category.trim() && !lead.category.toLowerCase().includes(filter.category.trim().toLowerCase())) return false;
+        const selectedCategories = filter.categories ?? (filter.category ? [filter.category] : []);
+        if (selectedCategories.length && !selectedCategories.some((category) => lead.category.toLowerCase().includes(category.toLowerCase()))) return false;
         if (filter.city.trim() && !lead.city.toLowerCase().includes(filter.city.trim().toLowerCase())) return false;
 
         // Quality
@@ -186,6 +171,11 @@ export function App() {
 
         // Status
         if (filter.status !== 'all' && lead.status !== filter.status) return false;
+        if (filter.source === '2gis' && !lead.sources?.includes('2gis')) return false;
+        if (filter.contact === 'mobile' && !lead.phones?.some((phone) => phone.type === 'mobile')) return false;
+        if (filter.contact === 'phone' && !lead.phones?.length) return false;
+        if (filter.contact === 'whatsapp_available' && lead.whatsappStatus !== 'available') return false;
+        if (filter.contact === 'whatsapp_unknown' && lead.whatsappStatus !== 'unknown') return false;
 
         return true;
       })
@@ -212,10 +202,12 @@ export function App() {
   // Lead updates
   const handleUpdateStatus = useCallback((leadId: string, status: BusinessLead['status']) => {
     setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, status } : l)));
+    void fetch(`/api/leads/${encodeURIComponent(leadId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
   }, []);
 
   const handleUpdateLead = (updated: BusinessLead) => {
     setLeads(prev => prev.map(l => (l.id === updated.id ? updated : l)));
+    void fetch(`/api/leads/${encodeURIComponent(updated.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updated) });
   };
 
   const handleDeleteLead = useCallback((leadId: string) => {
@@ -223,17 +215,12 @@ export function App() {
     setSelectedIds(prev => prev.filter(id => id !== leadId));
     setPitchLead((lead) => lead?.id === leadId ? null : lead);
     setDetailLead((lead) => lead?.id === leadId ? null : lead);
+    void fetch(`/api/leads/${encodeURIComponent(leadId)}`, { method: 'DELETE' });
   }, []);
 
   const handleAddManualLead = (newLead: BusinessLead) => {
     setLeads(prev => [newLead, ...prev]);
-  };
-
-  const handleResetToDemo = () => {
-    if (confirm('Сбросить базу к исходным демонстрационным лидам?')) {
-      setLeads(INITIAL_LEADS);
-      setSelectedIds([]);
-    }
+    void fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newLead) });
   };
 
   // Selection handlers
@@ -257,6 +244,7 @@ export function App() {
   const handleBatchDelete = () => {
     if (confirm(`Удалить выбранные ${selectedIds.length} компаний?`)) {
       setLeads(prev => prev.filter(l => !selectedIds.includes(l.id)));
+      selectedIds.forEach((id) => { void fetch(`/api/leads/${encodeURIComponent(id)}`, { method: 'DELETE' }); });
       setSelectedIds([]);
     }
   };
@@ -266,6 +254,7 @@ export function App() {
     setLeads(prev =>
       prev.map(l => (selectedIds.includes(l.id) ? { ...l, status } : l))
     );
+    selectedIds.forEach((id) => { void fetch(`/api/leads/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }); });
     setSelectedIds([]);
   };
 
@@ -275,27 +264,17 @@ export function App() {
       <Navbar
         leads={leads}
         onOpenAddModal={() => setIsAddModalOpen(true)}
-        onResetToDemo={handleResetToDemo}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-[90rem] w-full mx-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <main className="flex-1 w-full px-4 py-5 sm:px-6 sm:py-6 lg:px-6 xl:px-8">
         {storageNotice && (
           <div role="alert" className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             <span>{storageNotice}</span>
             <button type="button" onClick={() => setStorageNotice(null)} className="font-semibold underline underline-offset-2">Закрыть</button>
           </div>
         )}
-        {/* Global Statistics */}
-        <StatsBar leads={leads} />
-
-        {/* Lead Finder & Scraper Header Form */}
-        <SearchHeader
-          onStartScraping={handleStartScraping}
-          progress={progress}
-        />
-
-        <section aria-label="Рабочая область лидов" className="xl:grid xl:grid-cols-[17.5rem_minmax(0,1fr)] xl:items-start xl:gap-6">
+        <section aria-label="Рабочая область лидов" className="xl:grid xl:grid-cols-[18.125rem_minmax(0,1fr)] xl:items-start xl:gap-6">
           <FilterBar
             filter={filter}
             onChangeFilter={setFilter}
@@ -308,7 +287,9 @@ export function App() {
             layout="sidebar"
           />
 
-          <div>
+          <div className="min-w-0">
+            <StatsBar leads={leads} />
+            <SearchHeader onStartScraping={handleStartScraping} onStopScraping={handleStopScraping} progress={progress} filter={filter} />
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">База лидов</p>
@@ -368,7 +349,7 @@ export function App() {
               <p className="mt-1 text-sm text-slate-400">Измените параметры фильтра или запустите новый поиск.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 min-[1450px]:grid-cols-3">
               {filteredLeads.map(lead => (
                 <LeadCard
                   key={lead.id}
@@ -395,6 +376,10 @@ export function App() {
         onClose={() => setPitchLead(null)}
         onUpdateNotes={(id, notes) => {
           setLeads(prev => prev.map(l => (l.id === id ? { ...l, notes } : l)));
+        }}
+        onUpdateWhatsAppStatus={(id, whatsappStatus) => {
+          setLeads(prev => prev.map(l => (l.id === id ? { ...l, whatsappStatus } : l)));
+          setPitchLead((lead) => lead?.id === id ? { ...lead, whatsappStatus } : lead);
         }}
       />
 

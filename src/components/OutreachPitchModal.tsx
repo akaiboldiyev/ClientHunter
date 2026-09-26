@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Copy, Check, Send, Sparkles, MessageCircle, PhoneCall, Mail, Share2 } from 'lucide-react';
-import { BusinessLead } from '../types';
+import { BusinessLead, WhatsAppStatus } from '../types';
 import { generatePitchTemplates, PitchTemplate } from '../utils/pitchGenerator';
 
 interface OutreachPitchModalProps {
@@ -8,13 +8,15 @@ interface OutreachPitchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdateNotes: (leadId: string, notes: string) => void;
+  onUpdateWhatsAppStatus: (leadId: string, status: WhatsAppStatus) => void;
 }
 
 export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
   lead,
   isOpen,
   onClose,
-  onUpdateNotes
+  onUpdateNotes,
+  onUpdateWhatsAppStatus
 }) => {
   const templates = lead ? generatePitchTemplates(lead) : [];
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -28,7 +30,8 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
   }, [lead?.id]);
 
   const activeTemplate = templates.find((template) => template.id === selectedTemplateId) || templates[0];
-  const cleanPhone = (lead?.phone || '').replace(/[^\d+]/g, '');
+  const cleanPhone = lead?.phones?.[0]?.normalized || (lead?.phone || '').replace(/[^\d+]/g, '');
+  const whatsappStatus = lead?.whatsappStatus ?? 'unknown';
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -44,7 +47,7 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
   const handleOpenWhatsApp = () => {
     if (!activeTemplate || !cleanPhone.replace(/\D/g, '')) return;
     const text = encodeURIComponent(activeTemplate.text);
-    const url = `https://wa.me/${cleanPhone.replace('+', '')}?text=${text}`;
+    const url = lead?.messengers?.whatsapp?.url || `https://wa.me/${cleanPhone.replace('+', '')}?text=${text}`;
     window.open(url, '_blank');
   };
 
@@ -64,7 +67,7 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
                 Скрипты продаж для {lead.name}
               </h3>
               <p className="text-xs text-slate-400">
-                {lead.city} • {lead.category} • {lead.rating}★ ({lead.reviews} отзывов)
+                Источник: {lead.sources?.includes('2gis') ? '2GIS' : 'Вручную'} • {lead.category}
               </p>
             </div>
           </div>
@@ -96,7 +99,7 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
                 {tpl.channel === 'call' && <PhoneCall className="w-3.5 h-3.5 text-blue-600" />}
                 {tpl.channel === 'instagram_dm' && <Share2 className="w-3.5 h-3.5 text-pink-600" />}
                 {tpl.channel === 'email' && <Mail className="w-3.5 h-3.5 text-purple-600" />}
-                <span>{tpl.channel === 'whatsapp' ? 'WhatsApp / TG' : tpl.channel === 'call' ? 'Звонок' : tpl.channel === 'instagram_dm' ? 'Instagram' : 'Email'}</span>
+                <span>{tpl.channel === 'whatsapp' ? 'Мессенджер' : tpl.channel === 'call' ? 'Звонок' : tpl.channel === 'instagram_dm' ? 'Instagram' : 'Email'}</span>
               </button>
             );
           })}
@@ -134,9 +137,9 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
 
           {/* Quick tips */}
           <div className="space-y-1 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-            <p className="font-semibold">💡 Совет по первому контакту:</p>
+            <p className="font-semibold">Совет по первому контакту</p>
             <p className="text-amber-200/90">
-              Всегда делайте акцент на их высоком рейтинге ({lead.rating}★ на картах) — это растапливает лед. Покажите, что потеря клиентов из-за отсутствия сайта решается за 2-3 дня.
+              Используйте только проверяемые данные из карточки компании: категорию, город, рейтинг, отзывы и указанные каналы связи.
             </p>
           </div>
         </div>
@@ -144,19 +147,21 @@ export const OutreachPitchModal: React.FC<OutreachPitchModalProps> = ({
         {/* Footer */}
         <div className="flex flex-col gap-3 border-t border-slate-800 bg-slate-900/80 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-xs text-slate-400">
-            Телефон для связи: <strong className="text-slate-100">{lead.phone || 'Не указан'}</strong>
+            <span>Телефон: <strong className="text-slate-100">{cleanPhone || 'Не указан'}</strong></span><br />
+            <span>Тип: {lead.phones?.[0]?.type === 'mobile' ? 'мобильный' : lead.phones?.[0]?.type === 'landline' ? 'городской' : 'неизвестно'} · WhatsApp: {whatsappStatus === 'available' ? 'подтверждён' : whatsappStatus === 'unavailable' ? 'недоступен' : 'не подтверждён'}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {cleanPhone.replace(/\D/g, '') && (
+            {cleanPhone.replace(/\D/g, '') && whatsappStatus === 'available' && (
               <button
                 onClick={handleOpenWhatsApp}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm shadow-emerald-600/25 transition hover:bg-emerald-700"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Открыть в WhatsApp с текстом</span>
+                <span>Открыть WhatsApp</span>
               </button>
             )}
+            {cleanPhone.replace(/\D/g, '') && whatsappStatus !== 'available' && <a href={`tel:${cleanPhone}`} className="ui-button-secondary px-3 py-2 text-xs">Позвонить</a>}
 
             <button
               onClick={onClose}

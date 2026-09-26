@@ -59,7 +59,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs sm:text-sm">
           <thead>
-            <tr className="select-none border-b border-slate-700 bg-slate-900/90 text-xs font-semibold text-slate-300">
+            <tr className="select-none border-b bg-[var(--surface-2)] text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
               <th className="py-3.5 pl-4 pr-2 w-10">
                 <input
                   type="checkbox"
@@ -77,7 +77,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
               <th className="min-w-[130px] px-3 py-3.5 pr-4 text-right">Действия</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800 font-normal text-slate-200">
+          <tbody className="divide-y font-normal text-slate-200">
             {leads.map((lead) => {
               const isSelected = selectedIds.includes(lead.id);
               const cleanPhone = (lead.phone || '').replace(/[^\d+]/g, '');
@@ -85,8 +85,8 @@ export const LeadTable: React.FC<LeadTableProps> = ({
               return (
                 <tr
                   key={lead.id}
-                  className={`transition-colors hover:bg-slate-800/70 ${
-                    isSelected ? 'bg-indigo-500/10' : ''
+                  className={`h-[72px] transition-colors hover:bg-white/[0.035] ${
+                    isSelected ? 'bg-blue-500/10' : ''
                   }`}
                 >
                   {/* Select Checkbox */}
@@ -141,12 +141,12 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                   <td className="py-3 px-3">
                     {lead.phone ? (
                       <div className="flex items-center gap-1.5">
-                        <a
+                        {lead.whatsappStatus === 'available' && <a
                           href={`tel:${cleanPhone}`}
                           className="font-medium text-slate-200 hover:text-blue-300 transition-colors"
                         >
                           {lead.phone}
-                        </a>
+                        </a>}
                         <a
                           href={`https://wa.me/${cleanPhone.replace('+', '')}`}
                           target="_blank"
@@ -206,12 +206,12 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                         lead.status
                       )}`}
                     >
-                      <option value="new">🆕 Новый</option>
-                      <option value="contacted">📞 Связались</option>
-                      <option value="meeting">🤝 Встреча</option>
-                      <option value="negotiation">💼 Переговоры</option>
-                      <option value="won">🏆 Выиграно</option>
-                      <option value="lost">❌ Отказ</option>
+                      <option value="new">Новый</option>
+                      <option value="contacted">Связались</option>
+                      <option value="meeting">Встреча</option>
+                      <option value="negotiation">Переговоры</option>
+                      <option value="won">Выиграно</option>
+                      <option value="lost">Отказ</option>
                     </select>
                   </td>
 
