@@ -46,7 +46,7 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Откройте http://localhost:3000. Default provider — `TWOGIS_PROVIDER=playwright`; API key не нужен. Официальный API — только optional developer configuration.
+Откройте http://localhost:3000. Default provider — `TWOGIS_PROVIDER=playwright`; API key не нужен. Для Jarvis используется локальная Ollama на `127.0.0.1:11434`; сообщения WhatsApp открываются в браузере и отправляются после ручной проверки.
 
 ## Первый поиск
 

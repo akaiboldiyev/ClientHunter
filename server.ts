@@ -3,7 +3,9 @@ import path from 'path';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer as createViteServer } from 'vite';
+import { analyzeClientMessage, getOllamaHost, resolveOllamaModel } from './jarvisOllama.js';
 import { deleteLead, listLeads, updateLead, upsertLead } from './persistence.js';
+import { addDays, nextFollowUpDueAt } from './src/utils/followUpSequence.js';
 
 process.loadEnvFile?.('.env');
 
@@ -184,6 +186,35 @@ async function startServer() {
     if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
     return res.json({ lead });
   });
+  app.post('/api/leads/:id/whatsapp-opt-in', (req, res) => {
+    const lead = listLeads().find((item: any) => item.id === req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    if (req.body?.confirmed !== true) return res.status(400).json({ error: 'Подтвердите, что клиент явно согласился получать сообщения в WhatsApp.' });
+    const source = typeof req.body?.source === 'string' ? req.body.source.trim() : '';
+    const evidence = typeof req.body?.evidence === 'string' ? req.body.evidence.trim() : '';
+    if (!['website_form', 'inbound_whatsapp', 'in_person', 'referral', 'other'].includes(source) || evidence.length < 4 || evidence.length > 500) {
+      return res.status(400).json({ error: 'Укажите допустимый источник согласия и краткое описание подтверждения.' });
+    }
+    const updated = updateLead(req.params.id, {
+      whatsappOptInAt: new Date().toISOString(),
+      whatsappOptInSource: source,
+      whatsappOptInEvidence: evidence,
+    });
+    return res.json({ lead: updated });
+  });
+  app.delete('/api/leads/:id/whatsapp-opt-in', (req, res) => {
+    const lead = listLeads().find((item: any) => item.id === req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    const updated = updateLead(req.params.id, {
+      whatsappOptInAt: undefined,
+      whatsappOptInSource: undefined,
+      whatsappOptInEvidence: undefined,
+      followUpStatus: 'paused',
+      followUpDueAt: undefined,
+      followUpPauseReason: 'manual'
+    });
+    return res.json({ lead: updated });
+  });
   app.delete('/api/leads/:id', (req, res) => res.status(deleteLead(req.params.id) ? 204 : 404).end());
 
   // NDJSON keeps the existing Playwright provider but exposes every completed
@@ -326,12 +357,12 @@ async function startServer() {
         const pitch = fillLeadTemplate(campaignTemplate, lead);
         updateLead(lead.id, { customPitch: pitch, status: 'prepared' });
       } else {
-        // Ollama local generation with strict rules
-        const response = await fetch('http://127.0.0.1:11434/api/chat', {
+        const ollama = await resolveOllamaModel();
+        const response = await fetch(`${ollama.host}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'qwen3:14b',
+            model: ollama.model,
             stream: false,
             messages: [
               {
@@ -447,6 +478,7 @@ async function startServer() {
     if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
 
     const now = new Date().toISOString();
+    const isFirstConfirmedOutreach = !lead.whatsappSentAt;
     const existingHistory = Array.isArray(lead.conversationHistory) ? lead.conversationHistory : [];
     const hasInitialMessage = existingHistory.some((m: any) => m.sender === 'user');
 
@@ -469,9 +501,78 @@ async function startServer() {
         ? lead.conversationStatus
         : 'awaiting_reply',
       conversationHistory: updatedHistory,
+      ...(isFirstConfirmedOutreach ? {
+        followUpStatus: 'active',
+        followUpStep: 0,
+        followUpDueAt: addDays(now, 2),
+        followUpPauseReason: undefined
+      } : {}),
       nextRecommendedAction: lead.nextRecommendedAction || 'Ожидайте ответ клиента в WhatsApp'
     });
 
+    return res.json({ lead: updated });
+  });
+
+  app.post('/api/leads/:id/followup/confirm-sent', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((item: any) => item.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    if (lead.followUpStatus !== 'active' || lead.isRefused) {
+      return res.status(409).json({ error: 'Цепочка follow-up остановлена для этого лида.' });
+    }
+    if (!lead.followUpDueAt || new Date(lead.followUpDueAt).getTime() > Date.now()) {
+      return res.status(409).json({ error: 'Время следующего касания ещё не наступило.' });
+    }
+
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!text || text.length > 4000) return res.status(400).json({ error: 'Введите текст отправленного сообщения (до 4000 символов).' });
+    const step = Number.isInteger(lead.followUpStep) ? lead.followUpStep : 0;
+    if (step < 0 || step >= 5) return res.status(409).json({ error: 'Все запланированные касания уже завершены.' });
+
+    const now = new Date().toISOString();
+    const nextDueAt = nextFollowUpDueAt(now, step);
+    const history = Array.isArray(lead.conversationHistory) ? [...lead.conversationHistory] : [];
+    history.push({
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sender: 'user',
+      text,
+      timestamp: now,
+      delivery: 'sent',
+      category: `follow-up-${step + 1}`
+    });
+    const updated = updateLead(id, {
+      conversationHistory: history,
+      followUpStep: step + 1,
+      followUpLastSentAt: now,
+      followUpDueAt: nextDueAt,
+      followUpStatus: nextDueAt ? 'active' : 'completed',
+      followUpPauseReason: undefined,
+      nextRecommendedAction: nextDueAt ? 'Следующее касание появится в очереди по расписанию.' : 'Цепочка follow-up завершена.'
+    });
+    return res.json({ lead: updated });
+  });
+
+  app.post('/api/leads/:id/followup/snooze', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((item: any) => item.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    if (lead.followUpStatus !== 'active') return res.status(409).json({ error: 'Нет активного напоминания для переноса.' });
+    const days = Number(req.body?.days);
+    if (![1, 3, 7, 14].includes(days)) return res.status(400).json({ error: 'Выберите перенос на 1, 3, 7 или 14 дней.' });
+    const updated = updateLead(id, { followUpDueAt: addDays(new Date().toISOString(), days) });
+    return res.json({ lead: updated });
+  });
+
+  app.post('/api/leads/:id/followup/stop', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((item: any) => item.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    const updated = updateLead(id, {
+      followUpStatus: 'paused',
+      followUpDueAt: undefined,
+      followUpPauseReason: 'manual',
+      nextRecommendedAction: 'Follow-up остановлен вручную.'
+    });
     return res.json({ lead: updated });
   });
 
@@ -529,46 +630,24 @@ async function startServer() {
     });
   });
 
-  // Helper to resolve working Ollama host
-  const getOllamaHost = async (): Promise<string> => {
-    const hosts = [process.env.OLLAMA_HOST, 'http://127.0.0.1:11434', 'http://localhost:11434'].filter(Boolean) as string[];
-    for (const host of hosts) {
-      try {
-        const check = await fetch(`${host}/api/tags`, { signal: AbortSignal.timeout(1500) });
-        if (check.ok) return host;
-      } catch {
-        // try next
-      }
-    }
-    return 'http://127.0.0.1:11434';
-  };
-
   // Jarvis Ollama Status Check
   app.get('/api/jarvis/status', async (_, res) => {
     const host = await getOllamaHost();
     try {
       const startTime = Date.now();
-      const response = await fetch(`${host}/api/tags`, {
-        signal: AbortSignal.timeout(4000)
-      });
-      if (!response.ok) {
-        return res.json({ available: false, model: 'qwen3:14b', host, error: `Ollama вернул код ${response.status}` });
-      }
-      const data: any = await response.json();
-      const models: string[] = (data.models || []).map((m: any) => m.name || m.model);
-      const hasQwen = models.some((m) => m.includes('qwen3:14b') || m.includes('qwen3-coder:30b') || m.includes('qwen'));
+      const resolved = await resolveOllamaModel(host);
       return res.json({
         available: true,
-        model: models.find((m) => m.includes('qwen3:14b')) || models[0] || 'qwen3:14b',
-        models,
-        hasPreferredModel: hasQwen,
-        host,
+        model: resolved.model,
+        models: resolved.models,
+        hasPreferredModel: resolved.models.some((m) => /qwen/i.test(m)),
+        host: resolved.host,
         pingMs: Date.now() - startTime
       });
     } catch (e: any) {
       return res.json({
         available: false,
-        model: 'qwen3:14b',
+        model: 'local',
         host,
         error: `Сервис Ollama недоступен на ${host} (${e.message})`
       });
@@ -577,14 +656,14 @@ async function startServer() {
 
   // Jarvis Live Inference Ping Test
   app.post('/api/jarvis/ping', async (_, res) => {
-    const host = await getOllamaHost();
     const startTime = Date.now();
     try {
+      const { host, model } = await resolveOllamaModel();
       const response = await fetch(`${host}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'qwen3:14b',
+          model,
           stream: false,
           messages: [{ role: 'user', content: 'Ответь кратко: Готов.' }]
         }),
@@ -596,15 +675,14 @@ async function startServer() {
       const data: any = await response.json();
       return res.json({
         ok: true,
-        model: 'qwen3:14b',
+        model,
         reply: data.message?.content?.trim() || 'Готов',
         latencyMs: Date.now() - startTime,
         host
       });
     } catch (e: any) {
       return res.status(503).json({
-        error: `Тестовый запрос к Ollama не удался: ${e.message}`,
-        host
+        error: `Тестовый запрос к Ollama не удался: ${e.message}`
       });
     }
   });
@@ -616,87 +694,12 @@ async function startServer() {
       return res.status(400).json({ error: 'Укажите текст сообщения клиента.' });
     }
 
-    const host = await getOllamaHost();
-    const lead = leadId ? listLeads().find((l: any) => l.id === leadId) : null;
-    const companyContext = lead
-      ? `Компания: "${lead.name}", Сфера: "${lead.category}", Город: "${lead.city || 'Актау'}", Рейтинг: ${lead.rating || 0}★, Сайт: ${lead.hasWebsite ? 'есть' : 'нет'}, Ранее отправленный питч: "${lead.customPitch || ''}"`
-      : 'Контекст: Веб-разработка и маркетинг для B2B клиентов.';
-
-    const systemPrompt = `Ты — Джарвис, профессиональный локальный B2B переговорщик и ассистент по продажам сайтов и веб-услуг.
-Твоя цель: помочь менеджеру корректно ответить на сообщение клиента в WhatsApp.
-
-ЖЁСТКИЕ ТРЕБОВАНИЯ:
-1. Не выдумывай факты о компании, ценах, сроках, договоре, предоплате, скидках или гарантиях.
-2. Если клиент спрашивает о цене, сроках или условиях разработки: запроси решение менеджера и предложи вежливо объяснить, что точная стоимость зависит от задач, предложив коротко созвониться или обсудить структуру.
-3. Не используй манипуляции, давление, ложную срочность или обещания "золотых гор".
-4. Если клиент заинтересован: помоги выяснить потребность, предложи следующий шаг (показать демонстрацию концепта или созвониться на 5 минут).
-5. Если клиент отказывается, просит больше не писать или шлёт спам-блокировку: зафиксируй отказ, предложи вежливый прощальный ответ без навязчивости и отметь отказ.
-6. Язык ответа: русский (или язык, на котором написал клиент, если это казахский или английский).
-
-Верни СТРОГО валидный JSON следующей структуры без пояснений и без markdown кавычек:
-{
-  "category": "проявил интерес" | "запросил цену" | "запросил примеры работ" | "попросил объяснить предложение" | "сомневается" | "попросил связаться позже" | "отказался" | "сообщение неясное" | "требуется вмешательство человека",
-  "intent": "краткое описание намерения клиента в 1 предложении",
-  "keyPoints": "выделенные вопросы, потребности или возражения",
-  "recommendedAction": "объяснение рекомендуемого следующего шага для менеджера",
-  "proposedReply": "готовый краткий и естественный текст ответа для отправки в WhatsApp",
-  "status": "interested" | "discussing_terms" | "refused" | "needs_reply" | "completed" | "awaiting_reply",
-  "isRefusal": false
-}`;
-
-    const userPrompt = `${companyContext}
-Дополнительный контекст: ${context || 'нет'}
-Сообщение от клиента:
-"${clientMessage.trim()}"`;
-
     try {
-      const response = await fetch(`${host}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'qwen3:14b',
-          stream: false,
-          format: 'json',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ]
-        }),
-        signal: AbortSignal.timeout(45_000)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Ollama вернула статус ${response.status}`);
-      }
-
-      const data: any = await response.json();
-      const rawContent = data.message?.content || '{}';
-      let parsed: any;
-      try {
-        parsed = JSON.parse(rawContent);
-      } catch {
-        // Fallback cleanup if model wrapped in codeblock
-        const cleaned = rawContent.replace(/```(?:json)?/g, '').trim();
-        parsed = JSON.parse(cleaned);
-      }
-
-      // Sanitize fields
-      const result = {
-        category: parsed.category || 'сообщение неясное',
-        intent: parsed.intent || 'Ответ клиента в мессенджере',
-        keyPoints: parsed.keyPoints || 'Вопрос или реакция клиента',
-        recommendedAction: parsed.recommendedAction || 'Проверить сообщение и отправить ответ',
-        proposedReply: parsed.proposedReply || 'Здравствуйте! Спасибо за ответ. Подскажите, какие задачи для вас сейчас в приоритете?',
-        status: (['interested', 'discussing_terms', 'refused', 'needs_reply', 'completed', 'awaiting_reply'].includes(parsed.status)
-          ? parsed.status
-          : (parsed.isRefusal || parsed.category === 'отказался' ? 'refused' : 'needs_reply')),
-        isRefusal: Boolean(parsed.isRefusal || parsed.category === 'отказался')
-      };
-
+      const result = await analyzeClientMessage({ leadId, clientMessage, context });
       return res.json({ analysis: result });
     } catch (e: any) {
       return res.status(503).json({
-        error: 'Не удалось получить анализ от локальной модели Ollama (qwen3:14b).',
+        error: 'Не удалось получить анализ от локальной модели Ollama.',
         details: e.message
       });
     }
@@ -739,11 +742,22 @@ async function startServer() {
     if (message?.sender === 'client') {
       patch.lastClientMessage = message.text.trim();
       patch.lastClientMessageAt = now;
+      patch.followUpStatus = 'paused';
+      patch.followUpDueAt = undefined;
+      patch.followUpPauseReason = 'client_replied';
+      patch.nextRecommendedAction = 'Клиент ответил. Follow-up приостановлен; продолжите диалог через Communication.';
+    }
+
+    if (isClientRefused) {
+      patch.followUpStatus = 'paused';
+      patch.followUpDueAt = undefined;
+      patch.followUpPauseReason = 'refused';
     }
 
     const updated = updateLead(id, patch);
     return res.json({ lead: updated });
   });
+
   // ------------------------------------------
 
   if (process.env.NODE_ENV !== 'production') {

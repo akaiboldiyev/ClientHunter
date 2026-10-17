@@ -73,6 +73,9 @@ export function mergeLeads(leads: BusinessLead[]): BusinessLead[] {
     const opportunityAnalysis = existing.opportunityAnalysis ?? candidate.opportunityAnalysis;
     const notes = existing.notes ?? candidate.notes;
     const whatsappSentAt = existing.whatsappSentAt ?? candidate.whatsappSentAt;
+    const whatsappOptInAt = existing.whatsappOptInAt ?? candidate.whatsappOptInAt;
+    const whatsappOptInSource = existing.whatsappOptInSource ?? candidate.whatsappOptInSource;
+    const whatsappOptInEvidence = existing.whatsappOptInEvidence ?? candidate.whatsappOptInEvidence;
     const whatsappOpenedAt = existing.whatsappOpenedAt ?? candidate.whatsappOpenedAt;
     const conversationStatus = existing.conversationStatus ?? candidate.conversationStatus;
     const conversationHistory = existing.conversationHistory ?? candidate.conversationHistory;
@@ -80,6 +83,11 @@ export function mergeLeads(leads: BusinessLead[]): BusinessLead[] {
     const lastClientMessageAt = existing.lastClientMessageAt ?? candidate.lastClientMessageAt;
     const nextRecommendedAction = existing.nextRecommendedAction ?? candidate.nextRecommendedAction;
     const isRefused = existing.isRefused ?? candidate.isRefused;
+    const followUpStatus = existing.followUpStatus ?? candidate.followUpStatus;
+    const followUpStep = existing.followUpStep ?? candidate.followUpStep;
+    const followUpDueAt = existing.followUpDueAt ?? candidate.followUpDueAt;
+    const followUpPauseReason = existing.followUpPauseReason ?? candidate.followUpPauseReason;
+    const followUpLastSentAt = existing.followUpLastSentAt ?? candidate.followUpLastSentAt;
     merged[index] = hydrateLead({
       ...base,
       phones,
@@ -94,13 +102,21 @@ export function mergeLeads(leads: BusinessLead[]): BusinessLead[] {
       customPitch,
       notes,
       whatsappSentAt,
+      whatsappOptInAt,
+      whatsappOptInSource,
+      whatsappOptInEvidence,
       whatsappOpenedAt,
       conversationStatus,
       conversationHistory,
       lastClientMessage,
       lastClientMessageAt,
       nextRecommendedAction,
-      isRefused
+      isRefused,
+      followUpStatus,
+      followUpStep,
+      followUpDueAt,
+      followUpPauseReason,
+      followUpLastSentAt
     });
   }
   return merged;

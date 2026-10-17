@@ -25,6 +25,10 @@ export interface BusinessLead {
   socials?: Record<string, string>;
   messengers?: { whatsapp?: { url?: string; source: LeadSource } };
   whatsappStatus?: WhatsAppStatus;
+  /** Consent for business messages, recorded with a verifiable opt-in source. */
+  whatsappOptInAt?: string;
+  whatsappOptInSource?: string;
+  whatsappOptInEvidence?: string;
   whatsappSentAt?: string;
   whatsappOpenedAt?: string;
   conversationStatus?: ConversationStatus;
@@ -33,6 +37,11 @@ export interface BusinessLead {
   lastClientMessageAt?: string;
   nextRecommendedAction?: string;
   isRefused?: boolean;
+  followUpStatus?: 'active' | 'paused' | 'completed';
+  followUpStep?: number;
+  followUpDueAt?: string;
+  followUpPauseReason?: 'client_replied' | 'refused' | 'manual';
+  followUpLastSentAt?: string;
   sources?: LeadSource[];
   providerIds?: Partial<Record<LeadSource, string>>;
   contactability?: 'high' | 'medium' | 'low';
@@ -57,6 +66,11 @@ export interface ConversationMessage {
   category?: string;
   intent?: string;
   recommendedAction?: string;
+  whatsappId?: string;
+  chatId?: string;
+  inReplyTo?: string;
+  delivery?: 'received' | 'pending' | 'sent' | 'delivered' | 'read' | 'draft' | 'failed' | 'not_sent';
+  error?: string;
 }
 
 export interface JarvisAnalysisResult {
@@ -67,6 +81,7 @@ export interface JarvisAnalysisResult {
   proposedReply: string;
   status: ConversationStatus;
   isRefusal?: boolean;
+  needsHuman?: boolean;
 }
 
 export interface OpportunityAnalysis {

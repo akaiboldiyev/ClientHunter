@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { BusinessLead } from '../types';
 import { analyzeLeadOpportunity, filterLeadsBySegment, LeadSegmentCriteria } from '../utils/leadScoring';
+import { FOLLOW_UP_DAYS, getFollowUpMessage } from '../utils/followUpSequence';
 
 interface AutomationPanelProps {
   leads: BusinessLead[];
@@ -29,7 +30,7 @@ interface AutomationPanelProps {
   onNavigateToCommunication?: () => void;
 }
 
-type CampaignSubTab = 'qualification' | 'review' | 'sending';
+type CampaignSubTab = 'qualification' | 'review' | 'sending' | 'followups';
 
 export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunication }: AutomationPanelProps) {
   const [currentTab, setCurrentTab] = useState<CampaignSubTab>('qualification');
@@ -49,6 +50,16 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
   // Sending state
   const [openedChatIds, setOpenedChatIds] = useState<Record<string, boolean>>({});
   const [confirmingLeadId, setConfirmingLeadId] = useState<string | null>(null);
+  const [followUpDrafts, setFollowUpDrafts] = useState<Record<string, string>>({});
+  const [openedFollowUpIds, setOpenedFollowUpIds] = useState<Record<string, boolean>>({});
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const [followUpBusyId, setFollowUpBusyId] = useState<string | null>(null);
+  const [snoozeDays, setSnoozeDays] = useState<Record<string, number>>({});
+  const [optInConfirmed, setOptInConfirmed] = useState<Record<string, boolean>>({});
+  const [optInSource, setOptInSource] = useState<Record<string, string>>({});
+  const [optInEvidence, setOptInEvidence] = useState<Record<string, string>>({});
+  const [optInBusyId, setOptInBusyId] = useState<string | null>(null);
+  const [optInError, setOptInError] = useState<string | null>(null);
 
   // Available unique categories & cities
   const uniqueCategories = Array.from(new Set(leads.map(l => l.category).filter(Boolean))).sort();
@@ -74,6 +85,9 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
     l.status !== 'contacted' &&
     l.status !== 'lost'
   );
+  const followUpQueue = leads
+    .filter(l => l.followUpStatus === 'active' && l.followUpDueAt && !l.isRefused)
+    .sort((a, b) => String(a.followUpDueAt).localeCompare(String(b.followUpDueAt)));
 
   // Active lead for Step B (Review)
   const activeLead = leads.find(l => l.id === activeReviewLeadId) || segmentLeads[0] || null;
@@ -177,6 +191,99 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
     }
   };
 
+  const openFollowUpInWhatsApp = async (lead: BusinessLead) => {
+    const text = followUpDrafts[lead.id] ?? getFollowUpMessage(lead);
+    const phone = lead.phone.replace(/\D/g, '');
+    if (!phone || !text.trim()) return;
+    setFollowUpError(null);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    setOpenedFollowUpIds(prev => ({ ...prev, [lead.id]: true }));
+  };
+
+  const confirmFollowUpSent = async (lead: BusinessLead) => {
+    const text = (followUpDrafts[lead.id] ?? getFollowUpMessage(lead)).trim();
+    if (!openedFollowUpIds[lead.id]) return;
+    if (lead.followUpStep === 4 && text.includes('[добавьте')) {
+      setFollowUpError('Добавьте реальный новый повод в черновик перед отправкой.');
+      return;
+    }
+    setFollowUpBusyId(lead.id);
+    setFollowUpError(null);
+    try {
+      const res = await fetch(`/api/leads/${encodeURIComponent(lead.id)}/followup/confirm-sent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setOpenedFollowUpIds(prev => ({ ...prev, [lead.id]: false }));
+      onLeadsUpdated();
+    } catch (error: any) {
+      setFollowUpError(error.message || 'Не удалось сохранить отправку.');
+    } finally {
+      setFollowUpBusyId(null);
+    }
+  };
+
+  const snoozeFollowUp = async (lead: BusinessLead) => {
+    setFollowUpBusyId(lead.id);
+    setFollowUpError(null);
+    try {
+      const res = await fetch(`/api/leads/${encodeURIComponent(lead.id)}/followup/snooze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: snoozeDays[lead.id] || 7 })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      onLeadsUpdated();
+    } catch (error: any) {
+      setFollowUpError(error.message || 'Не удалось перенести напоминание.');
+    } finally {
+      setFollowUpBusyId(null);
+    }
+  };
+
+  const stopFollowUp = async (lead: BusinessLead) => {
+    setFollowUpBusyId(lead.id);
+    setFollowUpError(null);
+    try {
+      const res = await fetch(`/api/leads/${encodeURIComponent(lead.id)}/followup/stop`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      onLeadsUpdated();
+    } catch (error: any) {
+      setFollowUpError(error.message || 'Не удалось остановить цепочку.');
+    } finally {
+      setFollowUpBusyId(null);
+    }
+  };
+
+  const recordWhatsAppOptIn = async (lead: BusinessLead) => {
+    if (!optInConfirmed[lead.id] || !optInEvidence[lead.id]?.trim()) return;
+    setOptInBusyId(lead.id);
+    setOptInError(null);
+    try {
+      const res = await fetch(`/api/leads/${encodeURIComponent(lead.id)}/whatsapp-opt-in`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          confirmed: true,
+          source: optInSource[lead.id] || 'website_form',
+          evidence: optInEvidence[lead.id].trim()
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      onLeadsUpdated();
+    } catch (error: any) {
+      setOptInError(error.message || 'Не удалось сохранить согласие.');
+    } finally {
+      setOptInBusyId(null);
+    }
+  };
+
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 mb-6 shadow-xl backdrop-blur-sm">
       {/* Workflow Navigation Header */}
@@ -228,6 +335,15 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
           >
             <Send className="w-3.5 h-3.5" />
             <span>Шаг C: Отправка WA ({approvedQueue.length})</span>
+          </button>
+          <button
+            onClick={() => setCurrentTab('followups')}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
+              currentTab === 'followups' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Follow-up ({followUpQueue.length})</span>
           </button>
         </div>
       </div>
@@ -513,10 +629,11 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
           <div className="p-3.5 rounded-xl border border-blue-500/25 bg-blue-500/10 text-xs text-blue-200 flex items-start gap-2.5">
             <Clock className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold text-blue-100">Правило отправки WhatsApp: </span>
-              <span>Открытие ссылки подставляет текст в диалог, но само по себе <strong>не является отправкой</strong>. Нажмите «1. Открыть WhatsApp», отправьте сообщение в чате, вернитесь сюда и нажмите «2. Подтвердить отправку».</span>
+              <span className="font-semibold text-blue-100">Локальный путь: </span>
+              <span>после фиксации подтверждённого opt-in проверьте черновик, откройте чат WhatsApp в браузере, отправьте сообщение вручную и подтвердите отправку здесь. Найденные в 2GIS номера без согласия остаются вне рассылки.</span>
             </div>
           </div>
+          {optInError && <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{optInError}</div>}
 
           {approvedQueue.length === 0 ? (
             <div className="p-8 text-center bg-slate-950/40 rounded-xl border border-slate-800 text-slate-400 text-xs">
@@ -552,6 +669,32 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
                       <p className="text-xs text-slate-300 mt-1 line-clamp-2 bg-slate-900/70 p-2 rounded border border-slate-800/80">
                         {lead.customPitch || 'Сообщение готово к отправке'}
                       </p>
+                      {lead.whatsappOptInAt ? (
+                        <p className="mt-2 text-xs text-emerald-200">Согласие WhatsApp записано: {lead.whatsappOptInSource} · {new Date(lead.whatsappOptInAt).toLocaleDateString('ru-RU')}</p>
+                      ) : (
+                        <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
+                          <p className="text-xs leading-relaxed text-amber-100">Автоотправка заблокирована, пока клиент явно не согласился получать сообщения в WhatsApp. Найденный в 2GIS номер не считается согласием.</p>
+                          <label className="flex items-start gap-2 text-xs text-slate-200">
+                            <input type="checkbox" checked={Boolean(optInConfirmed[lead.id])} onChange={event => setOptInConfirmed(prev => ({ ...prev, [lead.id]: event.target.checked }))} className="mt-0.5 accent-emerald-500" />
+                            Я подтвердил, что этот клиент согласился получать мои сообщения в WhatsApp
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            <label className="sr-only" htmlFor={`optin-source-${lead.id}`}>Источник согласия</label>
+                            <select id={`optin-source-${lead.id}`} value={optInSource[lead.id] || 'website_form'} onChange={event => setOptInSource(prev => ({ ...prev, [lead.id]: event.target.value }))} className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-200">
+                              <option value="website_form">Форма на сайте</option>
+                              <option value="inbound_whatsapp">Клиент сам написал</option>
+                              <option value="in_person">Лично</option>
+                              <option value="referral">Рекомендация с подтверждённым согласием</option>
+                              <option value="other">Другой подтверждённый источник</option>
+                            </select>
+                            <label className="sr-only" htmlFor={`optin-evidence-${lead.id}`}>Подтверждение согласия</label>
+                            <input id={`optin-evidence-${lead.id}`} value={optInEvidence[lead.id] || ''} onChange={event => setOptInEvidence(prev => ({ ...prev, [lead.id]: event.target.value }))} placeholder="Где и когда дано согласие" className="min-h-10 min-w-56 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-100 placeholder:text-slate-500" />
+                            <button type="button" disabled={!optInConfirmed[lead.id] || !optInEvidence[lead.id]?.trim() || optInBusyId === lead.id} onClick={() => void recordWhatsAppOptIn(lead)} className="ui-button min-h-10 px-3 py-2 text-xs bg-emerald-700 text-white disabled:opacity-40">
+                              {optInBusyId === lead.id ? 'Сохраняю…' : 'Записать согласие'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -582,6 +725,64 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {currentTab === 'followups' && (
+        <div className="mt-4 space-y-4 animate-fade-in">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100">
+            Это очередь напоминаний, а не авторассылка. В назначенный день проверьте черновик, откройте WhatsApp, отправьте сообщение вручную и подтвердите отправку здесь. Любой ответ клиента ставит цепочку на паузу.
+          </div>
+          {followUpError && <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{followUpError}</div>}
+          {followUpQueue.length === 0 ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-8 text-center text-xs text-slate-400">
+              Активных напоминаний пока нет. Первое появится через 2 дня после подтверждённой отправки.
+            </div>
+          ) : followUpQueue.map(lead => {
+            const step = lead.followUpStep ?? 0;
+            const message = followUpDrafts[lead.id] ?? getFollowUpMessage(lead, step);
+            const dueDate = lead.followUpDueAt ? new Date(lead.followUpDueAt) : null;
+            const isDue = dueDate ? dueDate.getTime() <= Date.now() : false;
+            const needsNewReason = step === 4 && message.includes('[добавьте');
+            const isBusy = followUpBusyId === lead.id;
+            return (
+              <article key={lead.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">{lead.name}</h3>
+                    <p className="mt-0.5 text-xs text-slate-400">Касание {step + 1} из 5 · день {FOLLOW_UP_DAYS[step] ?? '—'} · {lead.phone}</p>
+                  </div>
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${isDue ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-slate-700 text-slate-300'}`}>
+                    {dueDate ? `${isDue ? 'Напоминание' : 'Запланировано'}: ${dueDate.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}` : 'Дата не задана'}
+                  </span>
+                </div>
+                <label className="block text-xs font-medium text-slate-300" htmlFor={`followup-${lead.id}`}>Черновик для проверки</label>
+                <textarea
+                  id={`followup-${lead.id}`}
+                  value={message}
+                  onChange={event => setFollowUpDrafts(prev => ({ ...prev, [lead.id]: event.target.value }))}
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm leading-relaxed text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                />
+                {needsNewReason && <p className="text-xs text-amber-200">Последнее касание требует нового реального повода. Заполните его выше; выдуманные проекты и дефицит не добавляйте.</p>}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" disabled={!lead.phone || isBusy || needsNewReason || !isDue} onClick={() => void openFollowUpInWhatsApp(lead)} className="ui-button min-h-10 px-3 py-2 text-xs bg-emerald-600 text-white disabled:opacity-40">
+                    {openedFollowUpIds[lead.id] ? 'Открыть WhatsApp снова' : 'Открыть WhatsApp'}
+                  </button>
+                  <button type="button" disabled={!openedFollowUpIds[lead.id] || isBusy || needsNewReason} onClick={() => void confirmFollowUpSent(lead)} className="ui-button-secondary min-h-10 px-3 py-2 text-xs disabled:opacity-40">
+                    {isBusy ? 'Сохраняю…' : 'Подтвердить отправку'}
+                  </button>
+                  <select aria-label={`Перенести напоминание для ${lead.name}`} value={snoozeDays[lead.id] || 7} onChange={event => setSnoozeDays(prev => ({ ...prev, [lead.id]: Number(event.target.value) }))} className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-200">
+                    {[1, 3, 7, 14].map(days => <option key={days} value={days}>Через {days} дн.</option>)}
+                  </select>
+                  <button type="button" disabled={isBusy} onClick={() => void snoozeFollowUp(lead)} className="ui-button-secondary min-h-10 px-3 py-2 text-xs disabled:opacity-40">Перенести</button>
+                  <button type="button" disabled={isBusy} onClick={() => void stopFollowUp(lead)} className="ui-button-secondary min-h-10 px-3 py-2 text-xs text-rose-200 disabled:opacity-40">Остановить</button>
+                  {onNavigateToCommunication && <button type="button" onClick={onNavigateToCommunication} className="ui-button-secondary min-h-10 px-3 py-2 text-xs">Открыть Communication</button>}
+                </div>
+                {openedFollowUpIds[lead.id] && <p className="text-xs text-blue-200">Отправьте сообщение в открывшемся чате, затем вернитесь сюда и нажмите «Подтвердить отправку».</p>}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

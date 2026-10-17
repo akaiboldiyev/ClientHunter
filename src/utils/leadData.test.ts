@@ -81,6 +81,29 @@ test('merging leads preserves customPitch, whatsappSentAt, and conversation hist
   assert.equal(merged[0].conversationHistory?.length, 1);
 });
 
+test('merging provider refresh preserves follow-up schedule and status', () => {
+  const existing = lead({
+    id: 'follow-up-lead',
+    followUpStatus: 'active',
+    followUpStep: 2,
+    followUpDueAt: '2026-10-26T10:00:00.000Z',
+    followUpLastSentAt: '2026-10-22T10:00:00.000Z',
+    whatsappOptInAt: '2026-10-20T10:00:00.000Z',
+    whatsappOptInSource: 'website_form',
+    whatsappOptInEvidence: 'Форма подписки #42'
+  });
+  const refreshed = lead({ id: 'provider-refresh', providerIds: { '2gis': 'follow-up-lead' } });
+  const merged = mergeLeads([existing, refreshed]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].followUpStatus, 'active');
+  assert.equal(merged[0].followUpStep, 2);
+  assert.equal(merged[0].followUpDueAt, '2026-10-26T10:00:00.000Z');
+  assert.equal(merged[0].followUpLastSentAt, '2026-10-22T10:00:00.000Z');
+  assert.equal(merged[0].whatsappOptInAt, '2026-10-20T10:00:00.000Z');
+  assert.equal(merged[0].whatsappOptInSource, 'website_form');
+  assert.equal(merged[0].whatsappOptInEvidence, 'Форма подписки #42');
+});
+
 test('refusal status excludes lead and sets isRefused', () => {
   const active = lead({ id: 'lead-refused', status: 'contacted', isRefused: false });
   const refused = { ...active, status: 'lost' as const, conversationStatus: 'refused' as const, isRefused: true };
@@ -115,5 +138,3 @@ test('lead segmentation filters by category, city, and website status', () => {
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].id, '1');
 });
-
-

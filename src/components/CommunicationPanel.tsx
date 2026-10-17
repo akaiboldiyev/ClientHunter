@@ -24,7 +24,7 @@ import {
   ThumbsDown,
   Info
 } from 'lucide-react';
-import { BusinessLead, ConversationStatus, ConversationMessage } from '../types';
+import { BusinessLead, ConversationStatus } from '../types';
 
 interface CommunicationPanelProps {
   leads: BusinessLead[];
@@ -225,6 +225,23 @@ export function CommunicationPanel({ leads, onLeadsUpdated, onNavigateToAutomati
     setAnalysisResult(null);
 
     try {
+      const alreadyRecorded = activeContact.conversationHistory?.some(
+        message => message.sender === 'client' && message.text === clientInputText.trim()
+      );
+      if (!alreadyRecorded) {
+        const recordRes = await fetch(`/api/leads/${encodeURIComponent(activeContact.id)}/conversation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: { sender: 'client', text: clientInputText.trim() },
+            status: 'needs_reply',
+            recommendedAction: 'Клиент ответил. Follow-up приостановлен; проверьте ответ и подготовьте черновик.'
+          })
+        });
+        if (!recordRes.ok) throw new Error('Не удалось сохранить входящее сообщение.');
+        onLeadsUpdated();
+      }
+
       const res = await fetch('/api/jarvis/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -277,25 +294,7 @@ export function CommunicationPanel({ leads, onLeadsUpdated, onNavigateToAutomati
     if (!activeContact) return;
     setIsSavingReply(true);
     try {
-      // 1. Record incoming message from client if typed
-      if (clientInputText.trim()) {
-        await fetch(`/api/leads/${encodeURIComponent(activeContact.id)}/conversation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: {
-              sender: 'client',
-              text: clientInputText.trim(),
-              category: analysisResult?.category,
-              intent: analysisResult?.intent
-            },
-            status: analysisResult?.status || 'needs_reply',
-            recommendedAction: analysisResult?.recommendedAction
-          })
-        });
-      }
-
-      // 2. Record outgoing user reply
+      // Record outgoing user reply; the inbound message is saved when analysis starts.
       const replyText = editableReplyText || analysisResult?.proposedReply || '';
       if (replyText.trim()) {
         await fetch(`/api/leads/${encodeURIComponent(activeContact.id)}/conversation`, {
@@ -417,7 +416,7 @@ export function CommunicationPanel({ leads, onLeadsUpdated, onNavigateToAutomati
           <div className="flex items-center gap-1.5 px-2">
             <span className={`w-2 h-2 rounded-full ${ollamaState.available ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
             <span className="text-slate-200 font-semibold">
-              {ollamaState.available ? `Ollama Qwen3:14b (${ollamaState.pingMs ?? '<10'}мс)` : 'Ollama недоступна'}
+              {ollamaState.available ? `Ollama ${ollamaState.model} (${ollamaState.pingMs ?? '<10'}мс)` : 'Ollama недоступна'}
             </span>
           </div>
 
@@ -449,11 +448,10 @@ export function CommunicationPanel({ leads, onLeadsUpdated, onNavigateToAutomati
         </div>
       )}
 
-      {/* Honest WhatsApp Reading Disclaimer */}
       <div className="my-3.5 p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 text-xs text-slate-300 flex items-start gap-2.5">
         <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
         <p className="text-slate-400 leading-relaxed">
-          <strong>Честный принцип работы:</strong> Прямого автоматического перехвата входящих сообщений WhatsApp без сторонних платных шлюзов нет. Вы открываете WhatsApp, вставляете сюда текст ответа клиента, а локальный Jarvis (Qwen3:14b) моментально раскладывает его по структуре (намерение, вопросы, возражения) и предлагает взвешенный ответ.
+          <strong>Локальный принцип работы:</strong> откройте WhatsApp в браузере, скопируйте сюда ответ клиента, а Jarvis разберёт его локальной моделью Ollama. Ответ всегда проверяется менеджером и отправляется вручную.
         </p>
       </div>
 
@@ -715,7 +713,8 @@ export function CommunicationPanel({ leads, onLeadsUpdated, onNavigateToAutomati
                         >
                           <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400 mb-1">
                             <span className="font-semibold text-slate-300">
-                              {msg.sender === 'client' ? activeContact.name : 'Я (WhatsApp)'}
+                              {msg.sender === 'client' ? activeContact.name : msg.sender === 'jarvis' ? 'Jarvis' : 'Я (WhatsApp)'}
+                              {msg.delivery === 'draft' ? ' · черновик' : msg.delivery === 'sent' ? ' · отправлено' : msg.delivery === 'delivered' ? ' · доставлено' : msg.delivery === 'read' ? ' · прочитано' : msg.delivery === 'failed' ? ' · ошибка отправки' : msg.delivery === 'not_sent' ? ' · не отправлено' : ''}
                             </span>
                             <span>{formatDateTime(msg.timestamp)}</span>
                           </div>
