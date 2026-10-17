@@ -11,21 +11,72 @@ export interface BusinessLead {
   category: string;
   source: '2gis' | 'manual';
   scrapedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   hasWebsite: boolean;
   leadQuality: 'hot' | 'warm' | 'cold' | 'verified';
-  status: 'new' | 'contacted' | 'meeting' | 'negotiation' | 'won' | 'lost';
+  status: 'new' | 'prepared' | 'approved' | 'contacted' | 'meeting' | 'negotiation' | 'won' | 'lost';
   notes?: string;
   customPitch?: string;
+  opportunityAnalysis?: OpportunityAnalysis;
   /** Normalized contacts. `phone` is retained for compatibility with existing exports. */
   phones?: LeadPhone[];
   emails?: string[];
   socials?: Record<string, string>;
   messengers?: { whatsapp?: { url?: string; source: LeadSource } };
   whatsappStatus?: WhatsAppStatus;
+  whatsappSentAt?: string;
+  whatsappOpenedAt?: string;
+  conversationStatus?: ConversationStatus;
+  conversationHistory?: ConversationMessage[];
+  lastClientMessage?: string;
+  lastClientMessageAt?: string;
+  nextRecommendedAction?: string;
+  isRefused?: boolean;
   sources?: LeadSource[];
   providerIds?: Partial<Record<LeadSource, string>>;
   contactability?: 'high' | 'medium' | 'low';
   raw?: Record<string, unknown>;
+}
+
+export type ConversationStatus =
+  | 'awaiting_reply'
+  | 'has_reply'
+  | 'needs_reply'
+  | 'interested'
+  | 'discussing_terms'
+  | 'refused'
+  | 'completed'
+  | 'unverified';
+
+export interface ConversationMessage {
+  id: string;
+  sender: 'client' | 'jarvis' | 'user';
+  text: string;
+  timestamp: string;
+  category?: string;
+  intent?: string;
+  recommendedAction?: string;
+}
+
+export interface JarvisAnalysisResult {
+  category: string;
+  intent: string;
+  keyPoints: string;
+  recommendedAction: string;
+  proposedReply: string;
+  status: ConversationStatus;
+  isRefusal?: boolean;
+}
+
+export interface OpportunityAnalysis {
+  priorityScore: number; // 0 - 100
+  priorityLevel: 'high' | 'medium' | 'low';
+  whySelected: string[];
+  potentialProblem: string;
+  recommendedPitchType: string;
+  draftMessage: string;
+  dataQualityNotes?: string[];
 }
 
 export type LeadSource = '2gis' | 'manual';
@@ -77,7 +128,7 @@ export interface LeadFilter {
   phoneOnly: boolean;
   minRating: number;
   quality: 'all' | 'hot' | 'warm' | 'cold';
-  status: 'all' | 'new' | 'contacted' | 'meeting' | 'negotiation' | 'won' | 'lost';
+  status: 'all' | 'new' | 'prepared' | 'contacted' | 'meeting' | 'negotiation' | 'won' | 'lost';
   category: string;
   categories?: string[];
   source?: 'all' | '2gis';

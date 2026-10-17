@@ -89,6 +89,7 @@ export function exportToJSON(leads: BusinessLead[], filename = 'results.json'): 
 function getStatusLabel(status: BusinessLead['status']): string {
   switch (status) {
     case 'new': return 'Новый';
+    case 'prepared': return 'Подготовлен ИИ';
     case 'contacted': return 'Связались';
     case 'meeting': return 'Встреча / Презентация';
     case 'negotiation': return 'Переговоры';

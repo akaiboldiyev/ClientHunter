@@ -207,6 +207,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                       )}`}
                     >
                       <option value="new">Новый</option>
+                      <option value="prepared">Подготовлен ИИ</option>
                       <option value="contacted">Связались</option>
                       <option value="meeting">Встреча</option>
                       <option value="negotiation">Переговоры</option>
@@ -263,6 +264,8 @@ function getStatusStyle(status: BusinessLead['status']): string {
   switch (status) {
     case 'new':
       return 'bg-blue-500/15 text-blue-200 border-blue-400/35';
+    case 'prepared':
+      return 'bg-cyan-500/15 text-cyan-200 border-cyan-400/35';
     case 'contacted':
       return 'bg-amber-500/15 text-amber-200 border-amber-400/35';
     case 'meeting':

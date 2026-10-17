@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Navbar } from './components/Navbar';
-import { StatsBar } from './components/StatsBar';
+import { Navbar, AppMode } from './components/Navbar';
+import { AutomationPanel } from './components/AutomationPanel';
+import { CommunicationPanel } from './components/CommunicationPanel';
+import { JarvisCockpit } from './components/JarvisCockpit';
 import { SearchHeader } from './components/SearchHeader';
 import { FilterBar } from './components/FilterBar';
 import { LeadTable } from './components/LeadTable';
@@ -10,14 +12,16 @@ import { LeadDetailModal } from './components/LeadDetailModal';
 import { AddLeadModal } from './components/AddLeadModal';
 import { BusinessLead, SearchQuery, ScrapingProgress, LeadFilter } from './types';
 import { hydrateLead, mergeLeads } from './utils/leadData';
+import { exportToExcel, exportToCSV } from './utils/exporter';
 
 export function App() {
   const [leads, setLeads] = useState<BusinessLead[]>([]);
+  const [activeMode, setActiveMode] = useState<AppMode>('cockpit');
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
   const searchAbort = useRef<AbortController | null>(null);
 
-  useEffect(() => {
+  const refreshLeads = useCallback(() => {
     fetch('/api/leads').then(async (response) => {
       if (!response.ok) throw new Error();
       const payload = await response.json();
@@ -25,11 +29,30 @@ export function App() {
     }).catch(() => setStorageNotice('Не удалось загрузить локальную базу сервера. Проверьте, что LeadScout server запущен.'));
   }, []);
 
+  useEffect(() => {
+    refreshLeads();
+  }, [refreshLeads]);
+
   useEffect(() => () => timers.current.forEach(window.clearTimeout), []);
 
   useEffect(() => {
     const leadIds = new Set(leads.map((lead) => lead.id));
     setSelectedIds((ids) => ids.filter((id) => leadIds.has(id)));
+  }, [leads]);
+
+  useEffect(() => {
+    const handleExportExcel = () => {
+      exportToExcel(leads, `leads_without_website_${Date.now()}.xlsx`);
+    };
+    const handleExportCSV = () => {
+      exportToCSV(leads, `leads_${Date.now()}.csv`);
+    };
+    window.addEventListener('export-excel', handleExportExcel);
+    window.addEventListener('export-csv', handleExportCSV);
+    return () => {
+      window.removeEventListener('export-excel', handleExportExcel);
+      window.removeEventListener('export-csv', handleExportCSV);
+    };
   }, [leads]);
 
   // Selected leads for batch actions
@@ -263,6 +286,8 @@ export function App() {
       {/* Top Navigation */}
       <Navbar
         leads={leads}
+        activeMode={activeMode}
+        onChangeMode={setActiveMode}
         onOpenAddModal={() => setIsAddModalOpen(true)}
       />
 
@@ -274,29 +299,64 @@ export function App() {
             <button type="button" onClick={() => setStorageNotice(null)} className="font-semibold underline underline-offset-2">Закрыть</button>
           </div>
         )}
-        <section aria-label="Рабочая область лидов" className="xl:grid xl:grid-cols-[18.125rem_minmax(0,1fr)] xl:items-start xl:gap-6">
-          <FilterBar
-            filter={filter}
-            onChangeFilter={setFilter}
-            viewMode={viewMode}
-            onChangeViewMode={setViewMode}
-            selectedCount={selectedIds.length}
-            totalFilteredCount={filteredLeads.length}
-            onBatchDelete={handleBatchDelete}
-            onBatchStatusChange={handleBatchStatusChange}
-            layout="sidebar"
-          />
 
-          <div className="min-w-0">
-            <StatsBar leads={leads} />
-            <SearchHeader onStartScraping={handleStartScraping} onStopScraping={handleStopScraping} progress={progress} filter={filter} />
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">База лидов</p>
-                <h2 className="mt-1 text-2xl font-bold tracking-tight text-white">Компании для контакта</h2>
+        {/* Mode Home: Jarvis Sales Cockpit */}
+        {activeMode === 'cockpit' && (
+          <div className="animate-fade-in">
+            <JarvisCockpit
+              leads={leads}
+              onNavigate={setActiveMode}
+              onRefreshLeads={refreshLeads}
+            />
+          </div>
+        )}
+
+        {/* Mode A: Dedicated Automation Campaign View */}
+        {activeMode === 'automation' && (
+          <div className="animate-fade-in">
+            <AutomationPanel
+              leads={leads}
+              onLeadsUpdated={refreshLeads}
+              onNavigateToCommunication={() => setActiveMode('communication')}
+            />
+          </div>
+        )}
+
+        {/* Mode B: Dedicated Communication & Jarvis View */}
+        {activeMode === 'communication' && (
+          <div className="animate-fade-in">
+            <CommunicationPanel
+              leads={leads}
+              onLeadsUpdated={refreshLeads}
+              onNavigateToAutomation={() => setActiveMode('automation')}
+            />
+          </div>
+        )}
+
+        {/* Default Mode: Leads Database, 2GIS Search, Filters and Tables/Cards */}
+        {activeMode === 'leads' && (
+          <section aria-label="Рабочая область лидов" className="xl:grid xl:grid-cols-[18.125rem_minmax(0,1fr)] xl:items-start xl:gap-6 animate-fade-in">
+            <FilterBar
+              filter={filter}
+              onChangeFilter={setFilter}
+              viewMode={viewMode}
+              onChangeViewMode={setViewMode}
+              selectedCount={selectedIds.length}
+              totalFilteredCount={filteredLeads.length}
+              onBatchDelete={handleBatchDelete}
+              onBatchStatusChange={handleBatchStatusChange}
+              layout="sidebar"
+            />
+
+            <div className="min-w-0">
+              <SearchHeader onStartScraping={handleStartScraping} onStopScraping={handleStopScraping} progress={progress} filter={filter} />
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">База лидов</p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-white">Компании для контакта</h2>
+                </div>
+                <span className="rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-xs font-semibold text-blue-100 tabular-nums">{filteredLeads.length} в выборке</span>
               </div>
-              <span className="rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-xs font-semibold text-blue-100 tabular-nums">{filteredLeads.length} в выборке</span>
-            </div>
         {/* Lead Table or Card Grid */}
         {viewMode === 'table' ? (
           <>
@@ -367,6 +427,7 @@ export function App() {
         )}
           </div>
         </section>
+        )}
       </main>
 
       {/* Outreach Pitch Script Modal */}

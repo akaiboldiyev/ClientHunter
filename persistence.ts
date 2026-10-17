@@ -87,9 +87,19 @@ function merge(existing: StoredLead, incoming: StoredLead): StoredLead {
     rating: Math.max(existing.rating ?? 0, incoming.rating ?? 0),
     reviews: Math.max(existing.reviews ?? 0, incoming.reviews ?? 0),
     whatsappStatus: existing.whatsappStatus === 'available' || incoming.whatsappStatus === 'available' ? 'available' : (incoming.whatsappStatus ?? existing.whatsappStatus ?? 'unknown'),
-    // CRM fields belong to the user and must survive a provider refresh.
+    // CRM and outreach fields belong to the user and must survive a provider refresh.
     status: existing.status ?? incoming.status ?? 'new',
     notes: existing.notes ?? incoming.notes,
+    customPitch: existing.customPitch ?? incoming.customPitch,
+    opportunityAnalysis: existing.opportunityAnalysis ?? incoming.opportunityAnalysis,
+    whatsappSentAt: existing.whatsappSentAt ?? incoming.whatsappSentAt,
+    whatsappOpenedAt: existing.whatsappOpenedAt ?? incoming.whatsappOpenedAt,
+    conversationStatus: existing.conversationStatus ?? incoming.conversationStatus,
+    conversationHistory: existing.conversationHistory ?? incoming.conversationHistory,
+    lastClientMessage: existing.lastClientMessage ?? incoming.lastClientMessage,
+    lastClientMessageAt: existing.lastClientMessageAt ?? incoming.lastClientMessageAt,
+    nextRecommendedAction: existing.nextRecommendedAction ?? incoming.nextRecommendedAction,
+    isRefused: existing.isRefused ?? incoming.isRefused,
     createdAt: existing.createdAt ?? now,
     updatedAt: now,
   };

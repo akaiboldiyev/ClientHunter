@@ -68,7 +68,40 @@ export function mergeLeads(leads: BusinessLead[]): BusinessLead[] {
     const preferCandidate = candidate.sources?.includes('2gis') && !existing.sources?.includes('2gis');
     const phones = [...(existing.phones ?? []), ...(candidate.phones ?? [])].filter((phone, i, all) => all.findIndex((item) => item.normalized === phone.normalized && item.raw === phone.raw) === i);
     const base = preferCandidate ? candidate : existing;
-    merged[index] = hydrateLead({ ...base, phones, sources: Array.from(new Set([...(existing.sources ?? []), ...(candidate.sources ?? [])])), providerIds: { ...existing.providerIds, ...candidate.providerIds }, website: base.website || existing.website || candidate.website, rating: Math.max(existing.rating || 0, candidate.rating || 0), reviews: Math.max(existing.reviews || 0, candidate.reviews || 0), category: Array.from(new Set([existing.category, candidate.category].filter(Boolean))).join(', '), whatsappStatus: existing.whatsappStatus === 'available' || candidate.whatsappStatus === 'available' ? 'available' : (existing.whatsappStatus === 'unavailable' && candidate.whatsappStatus === 'unavailable' ? 'unavailable' : 'unknown') });
+    const status = existing.status && existing.status !== 'new' ? existing.status : (candidate.status ?? 'new');
+    const customPitch = existing.customPitch ?? candidate.customPitch;
+    const opportunityAnalysis = existing.opportunityAnalysis ?? candidate.opportunityAnalysis;
+    const notes = existing.notes ?? candidate.notes;
+    const whatsappSentAt = existing.whatsappSentAt ?? candidate.whatsappSentAt;
+    const whatsappOpenedAt = existing.whatsappOpenedAt ?? candidate.whatsappOpenedAt;
+    const conversationStatus = existing.conversationStatus ?? candidate.conversationStatus;
+    const conversationHistory = existing.conversationHistory ?? candidate.conversationHistory;
+    const lastClientMessage = existing.lastClientMessage ?? candidate.lastClientMessage;
+    const lastClientMessageAt = existing.lastClientMessageAt ?? candidate.lastClientMessageAt;
+    const nextRecommendedAction = existing.nextRecommendedAction ?? candidate.nextRecommendedAction;
+    const isRefused = existing.isRefused ?? candidate.isRefused;
+    merged[index] = hydrateLead({
+      ...base,
+      phones,
+      sources: Array.from(new Set([...(existing.sources ?? []), ...(candidate.sources ?? [])])),
+      providerIds: { ...existing.providerIds, ...candidate.providerIds },
+      website: base.website || existing.website || candidate.website,
+      rating: Math.max(existing.rating || 0, candidate.rating || 0),
+      reviews: Math.max(existing.reviews || 0, candidate.reviews || 0),
+      category: Array.from(new Set([existing.category, candidate.category].filter(Boolean))).join(', '),
+      whatsappStatus: existing.whatsappStatus === 'available' || candidate.whatsappStatus === 'available' ? 'available' : (existing.whatsappStatus === 'unavailable' && candidate.whatsappStatus === 'unavailable' ? 'unavailable' : 'unknown'),
+      status,
+      customPitch,
+      notes,
+      whatsappSentAt,
+      whatsappOpenedAt,
+      conversationStatus,
+      conversationHistory,
+      lastClientMessage,
+      lastClientMessageAt,
+      nextRecommendedAction,
+      isRefused
+    });
   }
   return merged;
 }
