@@ -4,12 +4,14 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer as createViteServer } from 'vite';
 import { analyzeClientMessage, getOllamaHost, resolveOllamaModel } from './jarvisOllama.js';
+import { checkIncoming, clearWhatsAppSearch, connectWhatsApp, debugClickYou, debugOpenWhatsApp, debugWhatsApp, disconnectWhatsApp, getJarvisRuntime, initializeWhatsAppRuntimeForServerStart, prepareControlledTestCycle, resumeLead, sendInitialMessage, sendPreparedControlledTestCycle, sendTestMessage, setAutomationInterval, setAutoProcessing, setSendEnabled, takeOverLead } from './jarvisWhatsapp.js';
 import { deleteLead, listLeads, updateLead, upsertLead } from './persistence.js';
 import { addDays, nextFollowUpDueAt } from './src/utils/followUpSequence.js';
 
 process.loadEnvFile?.('.env');
 
 const DEFAULT_PORT = 3000;
+const serveBuiltClient = process.env.NODE_ENV === 'production' || /[\\/]dist[\\/]server\.cjs$/i.test(process.argv[1] ?? '');
 const PAGE_SIZE = 50;
 const MAX_2GIS_PAGES = Math.min(Math.max(Number(process.env.TWOGIS_MAX_PAGES ?? 20), 1), 100);
 const MAX_RESULTS = Math.min(Math.max(Number(process.env.TWOGIS_MAX_RESULTS ?? 500), 20), 500);
@@ -28,6 +30,10 @@ const normalizePhone = (raw: string) => {
   if (/^7\d{10}$/.test(digits)) return `+${digits}`;
   if (/^7\d{9}$/.test(digits)) return `+7${digits}`;
   return undefined;
+};
+const normalizedLeadPhone = (lead: any) => {
+  const raw = String(lead.phones?.find((phone: any) => phone.normalized)?.normalized || lead.phone || '');
+  return (normalizePhone(raw) || raw).replace(/\D/g, '');
 };
 const phoneType = (normalized?: string): ApiPhone['type'] => !normalized ? 'unknown' : /^\+7(?:0|4|5|6|7)\d{9}$/.test(normalized) ? 'mobile' : /^\+7\d{10}$/.test(normalized) ? 'landline' : 'unknown';
 const isWebsite = (url?: string) => { try { return Boolean(url && /^https?:$/.test(new URL(url).protocol) && !socialHost.test(new URL(url).hostname)); } catch { return false; } };
@@ -169,6 +175,9 @@ function getPort(): number {
 }
 
 async function startServer() {
+  // Persistent runtime data is kept for diagnostics and the interval only.
+  // A fresh ClientHunter process never restarts an outreach queue by itself.
+  initializeWhatsAppRuntimeForServerStart();
   const app = express();
   const port = getPort();
   app.disable('x-powered-by');
@@ -314,14 +323,18 @@ async function startServer() {
   const getStats = () => {
     const leads = listLeads();
     const totalWithWhatsApp = leads.filter((l: any) => l.whatsappStatus === 'available').length;
-    // Ready to send: prepared with customPitch, WA available, not yet confirmed sent and not lost
-    const readyToSend = leads.filter((l: any) =>
-      (l.status === 'prepared' || Boolean(l.customPitch)) &&
-      l.whatsappStatus === 'available' &&
-      !l.whatsappSentAt &&
-      l.status !== 'contacted' &&
-      l.status !== 'lost'
-    ).length;
+    // Match the autonomous sender: prepared/approved, WhatsApp-capable leads without a prior send.
+    const readyPhones = new Set<string>();
+    const readyToSend = leads.filter((l: any) => {
+      const phone = normalizedLeadPhone(l);
+      if (!l.customPitch?.trim() || !['approved', 'prepared'].includes(l.status) || l.whatsappStatus !== 'available' || phone.length < 8 || phone.length > 15 || l.whatsappSentAt || l.whatsappSendAttemptAt || l.isRefused || l.jarvisManualControl || l.jarvisStatus === 'error' || readyPhones.has(phone)) return false;
+      if ((Array.isArray(l.conversationHistory) ? l.conversationHistory : []).some((message: any) =>
+        (message.sender === 'jarvis' || message.sender === 'user') && !message.inReplyTo &&
+        ['sent', 'delivered', 'read'].includes(message.delivery)
+      )) return false;
+      readyPhones.add(phone);
+      return true;
+    }).length;
     // Confirmed sent: explicitly has whatsappSentAt or marked contacted
     const confirmedSent = leads.filter((l: any) => Boolean(l.whatsappSentAt) || l.status === 'contacted').length;
     // Awaiting preparation: new leads with WA that have no pitch yet
@@ -490,7 +503,8 @@ async function startServer() {
             id: `msg-${Date.now()}`,
             sender: 'user',
             text: lead.customPitch || 'Первичное обращение отправлено в WhatsApp.',
-            timestamp: lead.whatsappSentAt || now
+            timestamp: lead.whatsappSentAt || now,
+            delivery: 'sent'
           }
         ];
 
@@ -687,6 +701,147 @@ async function startServer() {
     }
   });
 
+  app.get('/api/jarvis/runtime', (_, res) => res.json(getJarvisRuntime()));
+
+  app.post('/api/jarvis/whatsapp/connect', async (_, res) => {
+    const runtime = await connectWhatsApp();
+    if (runtime.browser.status !== 'ready') return res.status(503).json({ runtime, error: runtime.browser.lastError || 'WhatsApp Web требует входа по QR-коду.' });
+    return res.json({ runtime });
+  });
+
+  app.post('/api/jarvis/whatsapp/disconnect', (_, res) => res.json({ runtime: disconnectWhatsApp() }));
+
+  app.post('/api/jarvis/test/send', async (req, res) => {
+    const chatName = typeof req.body?.chatName === 'string' ? req.body.chatName.trim() : '';
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!chatName || !text) return res.status(400).json({ error: 'Укажите имя тестового чата и текст сообщения.' });
+    try {
+      return res.json({ result: await sendTestMessage(chatName, text) });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Тестовое сообщение не отправлено.' });
+    }
+  });
+
+  app.post('/api/jarvis/leads/:id/send-initial', async (req, res) => {
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : undefined;
+    try {
+      return res.json({ result: await sendInitialMessage(req.params.id, text) });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Jarvis не смог отправить первичное сообщение.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/test/prepare', async (req, res) => {
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!text) return res.status(400).json({ error: 'Укажите текст контрольного сообщения.' });
+    try {
+      return res.json({ result: await prepareControlledTestCycle(text) });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось подготовить контрольный тест.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/test/send', async (_, res) => {
+    try {
+      return res.json({ result: await sendPreparedControlledTestCycle() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Контрольный тест не отправлен.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/debug', async (_, res) => {
+    try {
+      return res.json({ result: await debugWhatsApp() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось получить состояние окна WhatsApp Web.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/debug-open', async (_, res) => {
+    try {
+      return res.json({ result: await debugOpenWhatsApp('ВЫ') });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось открыть тестовый чат WhatsApp Web.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/clear-search', async (_, res) => {
+    try {
+      return res.json({ result: await clearWhatsAppSearch() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось очистить поиск WhatsApp Web.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/debug-click-you', async (_, res) => {
+    try {
+      return res.json({ result: await debugClickYou() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось открыть чат «Вы».' });
+    }
+  });
+
+  app.post('/api/jarvis/incoming/check', async (_, res) => {
+    const result = await checkIncoming();
+    return res.status(result.runtime.browser.status === 'error' || result.runtime.browser.status === 'needs_login' ? 503 : 200).json(result);
+  });
+
+  app.post('/api/jarvis/auto/start', async (req, res) => {
+    const requestedInterval = req.body?.intervalSec;
+    if (requestedInterval !== undefined) {
+      try {
+        setAutomationInterval(requestedInterval);
+      } catch (error: any) {
+        return res.status(400).json({ runtime: getJarvisRuntime(), error: error.message });
+      }
+    }
+    let runtime = getJarvisRuntime();
+    if (runtime.browser.status !== 'ready') runtime = await connectWhatsApp();
+    if (runtime.browser.status !== 'ready') return res.status(409).json({ runtime, error: runtime.browser.lastError || 'WhatsApp Web не готов к отправке.' });
+    try {
+      setSendEnabled(true);
+      return res.json({ runtime: setAutoProcessing(true) });
+    } catch (error: any) {
+      setSendEnabled(false);
+      return res.status(409).json({ runtime: getJarvisRuntime(), error: error.message || 'Не удалось запустить автономную отправку.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/stop', (_, res) => {
+    setAutoProcessing(false);
+    return res.json({ runtime: setSendEnabled(false) });
+  });
+
+  app.post('/api/jarvis/auto/interval', (req, res) => {
+    try {
+      return res.json({ runtime: setAutomationInterval(req.body?.seconds) });
+    } catch (error: any) {
+      return res.status(400).json({ runtime: getJarvisRuntime(), error: error.message || 'Некорректный интервал.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/send-mode', (req, res) => {
+    const enabled = Boolean(req.body?.enabled);
+    if (enabled && getJarvisRuntime().browser.status !== 'ready') return res.status(409).json({ runtime: getJarvisRuntime(), error: 'Автоотправка доступна только после подключения WhatsApp Web.' });
+    return res.json({ runtime: setSendEnabled(enabled) });
+  });
+
+  app.post('/api/leads/:id/takeover', (req, res) => {
+    const lead = takeOverLead(req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    return res.json({ lead });
+  });
+
+  app.post('/api/leads/:id/resume-jarvis', (req, res) => {
+    try {
+      const lead = resumeLead(req.params.id);
+      if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+      return res.json({ lead });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось вернуть Jarvis.' });
+    }
+  });
+
   // Jarvis Ollama Negotiation & Analysis
   app.post('/api/jarvis/analyze', async (req, res) => {
     const { leadId, clientMessage, context } = req.body ?? {};
@@ -723,7 +878,11 @@ async function startServer() {
         timestamp: now,
         category: message.category,
         intent: message.intent,
-        recommendedAction: message.recommendedAction
+        recommendedAction: message.recommendedAction,
+        delivery: message.delivery || (message.sender === 'client' ? 'received' : 'sent'),
+        whatsappId: message.whatsappId,
+        chatId: message.chatId,
+        inReplyTo: message.inReplyTo
       });
     }
 
@@ -760,13 +919,13 @@ async function startServer() {
 
   // ------------------------------------------
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (!serveBuiltClient) {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist'); app.use(express.static(distPath)); app.get('*', (_, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
-  app.listen(port, '0.0.0.0', () => console.log(`LeadScout server is running on http://0.0.0.0:${port}`));
+  app.listen(port, '127.0.0.1', () => console.log(`ClientHunter server is running on http://127.0.0.1:${port}`));
 }
 
 startServer().catch((error) => { console.error('Failed to start server:', error); process.exit(1); });

@@ -1,0 +1,47 @@
+src/components/FilterBar.tsx:73: trailing whitespace.
+[32m+[m[41m      [m
+src/components/SearchHeader.tsx:13: trailing whitespace.
+[32m+[m[41m  [m
+src/components/SearchHeader.tsx:14: trailing whitespace.
+[32m+[m[32m  const submit = (event: React.FormEvent) => {[m[41m [m
+src/components/SearchHeader.tsx:15: trailing whitespace.
+[32m+[m[32m    event.preventDefault();[m[41m [m
+src/components/SearchHeader.tsx:16: trailing whitespace.
+[32m+[m[32m    if (!filter.city.trim() || !categories.length) {[m[41m [m
+src/components/SearchHeader.tsx:17: trailing whitespace.
+[32m+[m[32m      setFormError('Укажите город и хотя бы одну категорию в левой панели.');[m[41m [m
+src/components/SearchHeader.tsx:18: trailing whitespace.
+[32m+[m[32m      return;[m[41m [m
+src/components/SearchHeader.tsx:19: trailing whitespace.
+[32m+[m[32m    }[m[41m [m
+src/components/SearchHeader.tsx:20: trailing whitespace.
+[32m+[m[32m    setFormError('');[m[41m [m
+src/components/SearchHeader.tsx:21: trailing whitespace.
+[32m+[m[32m    onStartScraping({[m[41m [m
+src/components/SearchHeader.tsx:22: trailing whitespace.
+[32m+[m[32m      city: filter.city.trim(),[m[41m [m
+src/components/SearchHeader.tsx:23: trailing whitespace.
+[32m+[m[32m      categories,[m[41m [m
+src/components/SearchHeader.tsx:24: trailing whitespace.
+[32m+[m[32m      source,[m[41m [m
+src/components/SearchHeader.tsx:25: trailing whitespace.
+[32m+[m[32m      onlyWithoutWebsite: true,[m[41m [m
+src/components/SearchHeader.tsx:26: trailing whitespace.
+[32m+[m[32m      minRating: 0,[m[41m [m
+src/components/SearchHeader.tsx:27: trailing whitespace.
+[32m+[m[32m      hasPhoneOnly: false,[m[41m [m
+src/components/SearchHeader.tsx:28: trailing whitespace.
+[32m+[m[32m      limit: 50[m[41m [m
+src/components/SearchHeader.tsx:29: trailing whitespace.
+[32m+[m[32m    });[m[41m [m
+src/components/SearchHeader.tsx:31: trailing whitespace.
+[32m+[m[41m  [m
+src/components/SearchHeader.tsx:33: trailing whitespace.
+[32m+[m[41m  [m
+src/components/SearchHeader.tsx:49: trailing whitespace.
+[32m+[m[32m          {progress.isScraping ?[m[41m [m
+src/components/SearchHeader.tsx:50: trailing whitespace.
+[32m+[m[32m            <button type="button" onClick={onStopScraping} className="ui-button-secondary shrink-0"><Square className="h-4 w-4" />Остановить поиск</button> :[m[41m [m
+src/components/SearchHeader.tsx:55: trailing whitespace.
+[32m+[m[41m      [m
+src/utils/leadData.test.ts:118: new blank line at EOF.

@@ -50,16 +50,13 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
   // Sending state
   const [openedChatIds, setOpenedChatIds] = useState<Record<string, boolean>>({});
   const [confirmingLeadId, setConfirmingLeadId] = useState<string | null>(null);
+  const [jarvisSendingLeadId, setJarvisSendingLeadId] = useState<string | null>(null);
+  const [jarvisSendError, setJarvisSendError] = useState<string | null>(null);
   const [followUpDrafts, setFollowUpDrafts] = useState<Record<string, string>>({});
   const [openedFollowUpIds, setOpenedFollowUpIds] = useState<Record<string, boolean>>({});
   const [followUpError, setFollowUpError] = useState<string | null>(null);
   const [followUpBusyId, setFollowUpBusyId] = useState<string | null>(null);
   const [snoozeDays, setSnoozeDays] = useState<Record<string, number>>({});
-  const [optInConfirmed, setOptInConfirmed] = useState<Record<string, boolean>>({});
-  const [optInSource, setOptInSource] = useState<Record<string, string>>({});
-  const [optInEvidence, setOptInEvidence] = useState<Record<string, string>>({});
-  const [optInBusyId, setOptInBusyId] = useState<string | null>(null);
-  const [optInError, setOptInError] = useState<string | null>(null);
 
   // Available unique categories & cities
   const uniqueCategories = Array.from(new Set(leads.map(l => l.category).filter(Boolean))).sort();
@@ -77,14 +74,25 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
     }
   );
 
-  // Approved leads waiting for WhatsApp sending
-  const approvedQueue = leads.filter(l =>
-    (l.status === 'approved' || l.status === 'prepared' || Boolean(l.customPitch)) &&
-    l.whatsappStatus === 'available' &&
-    !l.whatsappSentAt &&
-    l.status !== 'contacted' &&
-    l.status !== 'lost'
-  );
+  // Prepared/approved leads waiting for WhatsApp sending; unique normalized number per queue.
+  const queuedPhones = new Set<string>();
+  const approvedQueue = leads.filter(l => {
+    const rawPhone = l.phones?.find(phone => phone.normalized)?.normalized || l.phone || '';
+    const digits = String(rawPhone).replace(/\D/g, '');
+    const phone = /^8\d{10}$/.test(digits) ? `7${digits.slice(1)}` : digits;
+    const hasPriorInitialSend = (Array.isArray(l.conversationHistory) ? l.conversationHistory : []).some(message =>
+      (message.sender === 'jarvis' || message.sender === 'user') && !message.inReplyTo &&
+      ['sent', 'delivered', 'read'].includes(message.delivery || '')
+    );
+    const eligible = Boolean(
+      ['approved', 'prepared'].includes(l.status) && l.customPitch?.trim() &&
+      l.whatsappStatus === 'available' && phone.length >= 8 && phone.length <= 15 &&
+      !l.whatsappSentAt && !l.whatsappSendAttemptAt && !hasPriorInitialSend &&
+      !l.isRefused && !l.jarvisManualControl && l.jarvisStatus !== 'error' && !queuedPhones.has(phone)
+    );
+    if (eligible) queuedPhones.add(phone);
+    return eligible;
+  });
   const followUpQueue = leads
     .filter(l => l.followUpStatus === 'active' && l.followUpDueAt && !l.isRefused)
     .sort((a, b) => String(a.followUpDueAt).localeCompare(String(b.followUpDueAt)));
@@ -191,6 +199,35 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
     }
   };
 
+  const handleJarvisSendInitial = async (lead: BusinessLead) => {
+    const text = lead.customPitch?.trim();
+    if (!text) {
+      setJarvisSendError('Сначала подготовьте персональное сообщение на Шаге B.');
+      return;
+    }
+    setJarvisSendingLeadId(lead.id);
+    setJarvisSendError(null);
+    try {
+      const res = await fetch(`/api/jarvis/leads/${encodeURIComponent(lead.id)}/send-initial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setOpenedChatIds(prev => {
+        const next = { ...prev };
+        delete next[lead.id];
+        return next;
+      });
+      onLeadsUpdated();
+    } catch (error: any) {
+      setJarvisSendError(error.message || 'Jarvis не смог отправить сообщение через WhatsApp Web.');
+    } finally {
+      setJarvisSendingLeadId(null);
+    }
+  };
+
   const openFollowUpInWhatsApp = async (lead: BusinessLead) => {
     const text = followUpDrafts[lead.id] ?? getFollowUpMessage(lead);
     const phone = lead.phone.replace(/\D/g, '');
@@ -257,30 +294,6 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
       setFollowUpError(error.message || 'Не удалось остановить цепочку.');
     } finally {
       setFollowUpBusyId(null);
-    }
-  };
-
-  const recordWhatsAppOptIn = async (lead: BusinessLead) => {
-    if (!optInConfirmed[lead.id] || !optInEvidence[lead.id]?.trim()) return;
-    setOptInBusyId(lead.id);
-    setOptInError(null);
-    try {
-      const res = await fetch(`/api/leads/${encodeURIComponent(lead.id)}/whatsapp-opt-in`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          confirmed: true,
-          source: optInSource[lead.id] || 'website_form',
-          evidence: optInEvidence[lead.id].trim()
-        })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
-      onLeadsUpdated();
-    } catch (error: any) {
-      setOptInError(error.message || 'Не удалось сохранить согласие.');
-    } finally {
-      setOptInBusyId(null);
     }
   };
 
@@ -630,20 +643,21 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
             <Clock className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-semibold text-blue-100">Локальный путь: </span>
-              <span>после фиксации подтверждённого opt-in проверьте черновик, откройте чат WhatsApp в браузере, отправьте сообщение вручную и подтвердите отправку здесь. Найденные в 2GIS номера без согласия остаются вне рассылки.</span>
+              <span>проверьте подготовленный текст и нажмите «Jarvis отправит». Jarvis откроет чат по номеру из CRM и запишет результат только после подтверждения WhatsApp Web.</span>
             </div>
           </div>
-          {optInError && <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{optInError}</div>}
+          {jarvisSendError && <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{jarvisSendError}</div>}
 
           {approvedQueue.length === 0 ? (
             <div className="p-8 text-center bg-slate-950/40 rounded-xl border border-slate-800 text-slate-400 text-xs">
-              В очереди отправки нет контактов. Одобрите предложения на Шаге B.
+              В очереди отправки нет подготовленных лидов с доступным WhatsApp и корректным номером.
             </div>
           ) : (
             <div className="space-y-3">
               {approvedQueue.map((lead, idx) => {
                 const isOpened = Boolean(openedChatIds[lead.id]);
                 const isConfirming = confirmingLeadId === lead.id;
+                const isJarvisSending = jarvisSendingLeadId === lead.id;
 
                 return (
                   <div
@@ -669,35 +683,19 @@ export function AutomationPanel({ leads, onLeadsUpdated, onNavigateToCommunicati
                       <p className="text-xs text-slate-300 mt-1 line-clamp-2 bg-slate-900/70 p-2 rounded border border-slate-800/80">
                         {lead.customPitch || 'Сообщение готово к отправке'}
                       </p>
-                      {lead.whatsappOptInAt ? (
-                        <p className="mt-2 text-xs text-emerald-200">Согласие WhatsApp записано: {lead.whatsappOptInSource} · {new Date(lead.whatsappOptInAt).toLocaleDateString('ru-RU')}</p>
-                      ) : (
-                        <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
-                          <p className="text-xs leading-relaxed text-amber-100">Автоотправка заблокирована, пока клиент явно не согласился получать сообщения в WhatsApp. Найденный в 2GIS номер не считается согласием.</p>
-                          <label className="flex items-start gap-2 text-xs text-slate-200">
-                            <input type="checkbox" checked={Boolean(optInConfirmed[lead.id])} onChange={event => setOptInConfirmed(prev => ({ ...prev, [lead.id]: event.target.checked }))} className="mt-0.5 accent-emerald-500" />
-                            Я подтвердил, что этот клиент согласился получать мои сообщения в WhatsApp
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            <label className="sr-only" htmlFor={`optin-source-${lead.id}`}>Источник согласия</label>
-                            <select id={`optin-source-${lead.id}`} value={optInSource[lead.id] || 'website_form'} onChange={event => setOptInSource(prev => ({ ...prev, [lead.id]: event.target.value }))} className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-200">
-                              <option value="website_form">Форма на сайте</option>
-                              <option value="inbound_whatsapp">Клиент сам написал</option>
-                              <option value="in_person">Лично</option>
-                              <option value="referral">Рекомендация с подтверждённым согласием</option>
-                              <option value="other">Другой подтверждённый источник</option>
-                            </select>
-                            <label className="sr-only" htmlFor={`optin-evidence-${lead.id}`}>Подтверждение согласия</label>
-                            <input id={`optin-evidence-${lead.id}`} value={optInEvidence[lead.id] || ''} onChange={event => setOptInEvidence(prev => ({ ...prev, [lead.id]: event.target.value }))} placeholder="Где и когда дано согласие" className="min-h-10 min-w-56 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-100 placeholder:text-slate-500" />
-                            <button type="button" disabled={!optInConfirmed[lead.id] || !optInEvidence[lead.id]?.trim() || optInBusyId === lead.id} onClick={() => void recordWhatsAppOptIn(lead)} className="ui-button min-h-10 px-3 py-2 text-xs bg-emerald-700 text-white disabled:opacity-40">
-                              {optInBusyId === lead.id ? 'Сохраняю…' : 'Записать согласие'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => void handleJarvisSendInitial(lead)}
+                        disabled={isJarvisSending || !lead.customPitch}
+                        className="ui-button px-3.5 py-2 text-xs bg-violet-600 hover:bg-violet-500 text-white flex items-center gap-1.5 font-semibold disabled:opacity-40"
+                        title="Jarvis отправит подготовленный текст через WhatsApp Web"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isJarvisSending ? 'Jarvis отправляет…' : 'Jarvis отправит'}</span>
+                      </button>
+
                       <button
                         onClick={() => handleOpenWhatsApp(lead)}
                         className="ui-button px-3.5 py-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 font-semibold"

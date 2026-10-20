@@ -83,6 +83,9 @@ export function mergeLeads(leads: BusinessLead[]): BusinessLead[] {
     const lastClientMessageAt = existing.lastClientMessageAt ?? candidate.lastClientMessageAt;
     const nextRecommendedAction = existing.nextRecommendedAction ?? candidate.nextRecommendedAction;
     const isRefused = existing.isRefused ?? candidate.isRefused;
+    const jarvisManualControl = existing.jarvisManualControl ?? candidate.jarvisManualControl;
+    const jarvisStatus = existing.jarvisStatus ?? candidate.jarvisStatus;
+    const jarvisLastError = existing.jarvisLastError ?? candidate.jarvisLastError;
     const followUpStatus = existing.followUpStatus ?? candidate.followUpStatus;
     const followUpStep = existing.followUpStep ?? candidate.followUpStep;
     const followUpDueAt = existing.followUpDueAt ?? candidate.followUpDueAt;
@@ -102,6 +105,7 @@ export function mergeLeads(leads: BusinessLead[]): BusinessLead[] {
       customPitch,
       notes,
       whatsappSentAt,
+      whatsappSendAttemptAt: existing.whatsappSendAttemptAt ?? candidate.whatsappSendAttemptAt,
       whatsappOptInAt,
       whatsappOptInSource,
       whatsappOptInEvidence,
@@ -112,6 +116,9 @@ export function mergeLeads(leads: BusinessLead[]): BusinessLead[] {
       lastClientMessageAt,
       nextRecommendedAction,
       isRefused,
+      jarvisManualControl,
+      jarvisStatus,
+      jarvisLastError,
       followUpStatus,
       followUpStep,
       followUpDueAt,

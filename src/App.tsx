@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navbar, AppMode } from './components/Navbar';
 import { AutomationPanel } from './components/AutomationPanel';
+import { AutomationWorkspace } from './components/AutomationWorkspace';
 import { CommunicationPanel } from './components/CommunicationPanel';
-import { JarvisCockpit } from './components/JarvisCockpit';
 import { SearchHeader } from './components/SearchHeader';
 import { FilterBar } from './components/FilterBar';
 import { LeadTable } from './components/LeadTable';
@@ -300,12 +300,11 @@ export function App() {
           </div>
         )}
 
-        {/* Mode Home: Jarvis Sales Cockpit */}
+        {/* Mode Home: Automation workspace */}
         {activeMode === 'cockpit' && (
           <div className="animate-fade-in">
-            <JarvisCockpit
+            <AutomationWorkspace
               leads={leads}
-              onNavigate={setActiveMode}
               onRefreshLeads={refreshLeads}
             />
           </div>

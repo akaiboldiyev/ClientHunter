@@ -18,13 +18,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAddModal
 }) => {
   const withoutWebCount = leads.filter(l => !l.hasWebsite).length;
-  const readyAutomationCount = leads.filter(l =>
-    (l.status === 'prepared' || l.status === 'approved' || Boolean(l.customPitch)) &&
-    l.whatsappStatus === 'available' &&
-    !l.whatsappSentAt &&
-    l.status !== 'contacted' &&
-    l.status !== 'lost'
-  ).length;
+  const readyPhoneNumbers = new Set<string>();
+  const readyAutomationCount = leads.filter(l => {
+    const rawPhone = l.phones?.find(phone => phone.normalized)?.normalized || l.phone || '';
+    const digits = String(rawPhone).replace(/\D/g, '');
+    const phone = /^8\d{10}$/.test(digits) ? `7${digits.slice(1)}` : digits;
+    const hasPriorInitialSend = (Array.isArray(l.conversationHistory) ? l.conversationHistory : []).some(message =>
+      (message.sender === 'jarvis' || message.sender === 'user') && !message.inReplyTo &&
+      ['sent', 'delivered', 'read'].includes(message.delivery || '')
+    );
+    const eligible = Boolean(
+      ['prepared', 'approved'].includes(l.status) && l.whatsappStatus === 'available' &&
+      Boolean(l.customPitch?.trim()) && phone.length >= 8 && phone.length <= 15 &&
+      !l.whatsappSentAt && !l.whatsappSendAttemptAt && !hasPriorInitialSend &&
+      !l.isRefused && !l.jarvisManualControl && l.jarvisStatus !== 'error' && !readyPhoneNumbers.has(phone)
+    );
+    if (eligible) readyPhoneNumbers.add(phone);
+    return eligible;
+  }).length;
   const communicationCount = leads.filter(l =>
     (Array.isArray(l.conversationHistory) && l.conversationHistory.some(m => m.sender === 'client')) ||
     l.conversationStatus === 'needs_reply' ||

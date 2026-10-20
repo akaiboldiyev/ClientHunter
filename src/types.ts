@@ -30,6 +30,7 @@ export interface BusinessLead {
   whatsappOptInSource?: string;
   whatsappOptInEvidence?: string;
   whatsappSentAt?: string;
+  whatsappSendAttemptAt?: string;
   whatsappOpenedAt?: string;
   conversationStatus?: ConversationStatus;
   conversationHistory?: ConversationMessage[];
@@ -37,6 +38,9 @@ export interface BusinessLead {
   lastClientMessageAt?: string;
   nextRecommendedAction?: string;
   isRefused?: boolean;
+  jarvisManualControl?: boolean;
+  jarvisStatus?: 'idle' | 'processing' | 'draft' | 'replied' | 'needs_human' | 'human_control' | 'refused' | 'error';
+  jarvisLastError?: string;
   followUpStatus?: 'active' | 'paused' | 'completed';
   followUpStep?: number;
   followUpDueAt?: string;
@@ -68,6 +72,9 @@ export interface ConversationMessage {
   recommendedAction?: string;
   whatsappId?: string;
   chatId?: string;
+  sendStartedAt?: string;
+  sendConfirmedAt?: string;
+  whatsappDeliveryStatus?: 'sent' | 'delivered' | 'read' | 'failed';
   inReplyTo?: string;
   delivery?: 'received' | 'pending' | 'sent' | 'delivered' | 'read' | 'draft' | 'failed' | 'not_sent';
   error?: string;

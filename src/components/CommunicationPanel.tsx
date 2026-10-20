@@ -21,10 +21,10 @@ import {
   Building2,
   MapPin,
   Calendar,
-  ThumbsDown,
-  Info
+  ThumbsDown
 } from 'lucide-react';
 import { BusinessLead, ConversationStatus } from '../types';
+import { JarvisWhatsAppControls } from './JarvisWhatsAppControls';
 
 interface CommunicationPanelProps {
   leads: BusinessLead[];
@@ -448,12 +448,7 @@ export function CommunicationPanel({ leads, onLeadsUpdated, onNavigateToAutomati
         </div>
       )}
 
-      <div className="my-3.5 p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 text-xs text-slate-300 flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-        <p className="text-slate-400 leading-relaxed">
-          <strong>Локальный принцип работы:</strong> откройте WhatsApp в браузере, скопируйте сюда ответ клиента, а Jarvis разберёт его локальной моделью Ollama. Ответ всегда проверяется менеджером и отправляется вручную.
-        </p>
-      </div>
+      <JarvisWhatsAppControls onChanged={onLeadsUpdated} />
 
       {/* Operational Queue Filter Tabs */}
       <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs font-semibold mb-4">
@@ -673,6 +668,21 @@ export function CommunicationPanel({ leads, onLeadsUpdated, onNavigateToAutomati
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>Чат WA</span>
                     </a>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!activeContact) return;
+                        const path = activeContact.jarvisManualControl
+                          ? `/api/leads/${encodeURIComponent(activeContact.id)}/resume-jarvis`
+                          : `/api/leads/${encodeURIComponent(activeContact.id)}/takeover`;
+                        await fetch(path, { method: 'POST' });
+                        onLeadsUpdated();
+                      }}
+                      className="ui-button-secondary px-3 py-1.5 text-xs"
+                    >
+                      {activeContact.jarvisManualControl ? 'Вернуть Jarvis' : 'Взять под контроль'}
+                    </button>
 
                     <select
                       value={activeContact.conversationStatus || (activeContact.status === 'contacted' && !activeContact.whatsappSentAt ? 'unverified' : 'awaiting_reply')}
