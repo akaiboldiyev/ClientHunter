@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BusinessLead } from '../types';
 import { hydrateLead, isBusinessWebsite, mergeLeads, normalizeKazakhstanPhone } from './leadData';
+import { analyzeLeadOpportunity, filterLeadsBySegment } from './leadScoring';
 
 const lead = (patch: Partial<BusinessLead> = {}): BusinessLead => hydrateLead({
   id: 'one', name: 'Компания', phone: '+7 777 123 45 67', address: 'Актау, 1', website: '', rating: 4.5, reviews: 10,
@@ -54,4 +55,86 @@ test('batch-style partial result remains mergeable with a manually added record'
   const merged = mergeLeads([twoGis, manual]);
   assert.equal(merged.length, 1);
   assert.deepEqual(merged[0].sources?.sort(), ['2gis', 'manual']);
+});
+
+test('merging leads preserves customPitch, whatsappSentAt, and conversation history', () => {
+  const existing = lead({
+    id: 'lead-1',
+    status: 'prepared',
+    customPitch: 'Сохранённый питч',
+    whatsappSentAt: '2026-10-17T12:00:00.000Z',
+    conversationStatus: 'awaiting_reply',
+    conversationHistory: [
+      { id: '1', sender: 'user', text: 'Сохранённый питч', timestamp: '2026-10-17T12:00:00.000Z' }
+    ]
+  });
+  const incomingFromProvider = lead({
+    id: 'lead-provider-refresh',
+    providerIds: { '2gis': 'lead-1' },
+    status: 'new'
+  });
+  const merged = mergeLeads([existing, incomingFromProvider]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].customPitch, 'Сохранённый питч');
+  assert.equal(merged[0].whatsappSentAt, '2026-10-17T12:00:00.000Z');
+  assert.equal(merged[0].conversationStatus, 'awaiting_reply');
+  assert.equal(merged[0].conversationHistory?.length, 1);
+});
+
+test('merging provider refresh preserves follow-up schedule and status', () => {
+  const existing = lead({
+    id: 'follow-up-lead',
+    followUpStatus: 'active',
+    followUpStep: 2,
+    followUpDueAt: '2026-10-26T10:00:00.000Z',
+    followUpLastSentAt: '2026-10-22T10:00:00.000Z',
+    whatsappOptInAt: '2026-10-20T10:00:00.000Z',
+    whatsappOptInSource: 'website_form',
+    whatsappOptInEvidence: 'Форма подписки #42'
+  });
+  const refreshed = lead({ id: 'provider-refresh', providerIds: { '2gis': 'follow-up-lead' } });
+  const merged = mergeLeads([existing, refreshed]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].followUpStatus, 'active');
+  assert.equal(merged[0].followUpStep, 2);
+  assert.equal(merged[0].followUpDueAt, '2026-10-26T10:00:00.000Z');
+  assert.equal(merged[0].followUpLastSentAt, '2026-10-22T10:00:00.000Z');
+  assert.equal(merged[0].whatsappOptInAt, '2026-10-20T10:00:00.000Z');
+  assert.equal(merged[0].whatsappOptInSource, 'website_form');
+  assert.equal(merged[0].whatsappOptInEvidence, 'Форма подписки #42');
+});
+
+test('refusal status excludes lead and sets isRefused', () => {
+  const active = lead({ id: 'lead-refused', status: 'contacted', isRefused: false });
+  const refused = { ...active, status: 'lost' as const, conversationStatus: 'refused' as const, isRefused: true };
+  assert.equal(refused.status, 'lost');
+  assert.equal(refused.isRefused, true);
+  assert.equal(refused.conversationStatus, 'refused');
+});
+
+test('opportunity analysis gives high score to leads without website and with WhatsApp', () => {
+  const hot = lead({
+    name: 'Стоматология Дент',
+    hasWebsite: false,
+    whatsappStatus: 'available',
+    reviews: 15,
+    rating: 4.8
+  });
+  const analysis = analyzeLeadOpportunity(hot);
+  assert.equal(analysis.priorityLevel, 'high');
+  assert.ok(analysis.priorityScore >= 75);
+  assert.ok(analysis.whySelected.some(w => w.includes('отсутствие официального сайта')));
+  assert.ok(analysis.draftMessage.includes('Стоматология Дент'));
+  // Ensure no fake flattery like "Поздравляем с рейтингом"
+  assert.equal(analysis.draftMessage.includes('Поздравляем с'), false);
+});
+
+test('lead segmentation filters by category, city, and website status', () => {
+  const l1 = lead({ id: '1', category: 'стоматология', city: 'Актау', hasWebsite: false, whatsappStatus: 'available' });
+  const l2 = lead({ id: '2', category: 'автосервис', city: 'Актау', hasWebsite: true, whatsappStatus: 'available' });
+  const l3 = lead({ id: '3', category: 'стоматология', city: 'Алматы', hasWebsite: false, whatsappStatus: 'unknown' });
+
+  const filtered = filterLeadsBySegment([l1, l2, l3], { category: 'стоматология', city: 'Актау', onlyWithoutWebsite: true });
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].id, '1');
 });

@@ -70,7 +70,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filter, onChangeFilter, vi
       </div>
 
       {selectedCount > 0 && <div className="space-y-3 rounded-xl border border-blue-400/25 bg-blue-500/10 p-3 text-xs"><div className="flex items-center gap-2 font-semibold text-blue-100"><CheckSquare className="h-4 w-4" />Выбрано: {selectedCount} из {totalFilteredCount}</div><select onChange={(e) => { if (e.target.value) { onBatchStatusChange(e.target.value); e.target.value = ''; } }} defaultValue="" className="ui-input min-h-9 text-xs"><option value="" disabled>Установить статус...</option><option value="contacted">Связались</option><option value="meeting">Встреча</option><option value="negotiation">Переговоры</option><option value="won">Выиграно</option><option value="lost">Отказ</option></select><button onClick={onBatchDelete} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"><Trash2 className="h-4 w-4" />Удалить выбранные</button></div>}
-      <button type="button" onClick={reset} className="w-full py-1 text-xs font-medium text-[var(--text-muted)] hover:text-white">Сбросить фильтры</button>
+
+      <div className="border-t pt-5 space-y-2">
+        <button type="button" onClick={reset} className="w-full py-1 text-xs font-medium text-[var(--text-muted)] hover:text-white mb-2">Сбросить фильтры</button>
+        <div className="flex gap-2">
+           <button onClick={() => window.dispatchEvent(new CustomEvent('export-excel'))} className="flex-1 text-[10px] ui-button-secondary py-1 text-slate-400 hover:text-white border-transparent bg-[var(--surface-2)]">Экспорт Excel</button>
+           <button onClick={() => window.dispatchEvent(new CustomEvent('export-csv'))} className="flex-1 text-[10px] ui-button-secondary py-1 text-slate-400 hover:text-white border-transparent bg-[var(--surface-2)]">Экспорт CSV</button>
+        </div>
+      </div>
     </section>
   );
 };

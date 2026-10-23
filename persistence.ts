@@ -87,9 +87,30 @@ function merge(existing: StoredLead, incoming: StoredLead): StoredLead {
     rating: Math.max(existing.rating ?? 0, incoming.rating ?? 0),
     reviews: Math.max(existing.reviews ?? 0, incoming.reviews ?? 0),
     whatsappStatus: existing.whatsappStatus === 'available' || incoming.whatsappStatus === 'available' ? 'available' : (incoming.whatsappStatus ?? existing.whatsappStatus ?? 'unknown'),
-    // CRM fields belong to the user and must survive a provider refresh.
+    // CRM and outreach fields belong to the user and must survive a provider refresh.
     status: existing.status ?? incoming.status ?? 'new',
     notes: existing.notes ?? incoming.notes,
+    customPitch: existing.customPitch ?? incoming.customPitch,
+    opportunityAnalysis: existing.opportunityAnalysis ?? incoming.opportunityAnalysis,
+    whatsappSentAt: existing.whatsappSentAt ?? incoming.whatsappSentAt,
+    whatsappOptInAt: existing.whatsappOptInAt ?? incoming.whatsappOptInAt,
+    whatsappOptInSource: existing.whatsappOptInSource ?? incoming.whatsappOptInSource,
+    whatsappOptInEvidence: existing.whatsappOptInEvidence ?? incoming.whatsappOptInEvidence,
+    whatsappOpenedAt: existing.whatsappOpenedAt ?? incoming.whatsappOpenedAt,
+    conversationStatus: existing.conversationStatus ?? incoming.conversationStatus,
+    conversationHistory: existing.conversationHistory ?? incoming.conversationHistory,
+    lastClientMessage: existing.lastClientMessage ?? incoming.lastClientMessage,
+    lastClientMessageAt: existing.lastClientMessageAt ?? incoming.lastClientMessageAt,
+    nextRecommendedAction: existing.nextRecommendedAction ?? incoming.nextRecommendedAction,
+    isRefused: existing.isRefused ?? incoming.isRefused,
+    jarvisManualControl: existing.jarvisManualControl ?? incoming.jarvisManualControl,
+    jarvisStatus: existing.jarvisStatus ?? incoming.jarvisStatus,
+    jarvisLastError: existing.jarvisLastError ?? incoming.jarvisLastError,
+    followUpStatus: existing.followUpStatus ?? incoming.followUpStatus,
+    followUpStep: existing.followUpStep ?? incoming.followUpStep,
+    followUpDueAt: existing.followUpDueAt ?? incoming.followUpDueAt,
+    followUpPauseReason: existing.followUpPauseReason ?? incoming.followUpPauseReason,
+    followUpLastSentAt: existing.followUpLastSentAt ?? incoming.followUpLastSentAt,
     createdAt: existing.createdAt ?? now,
     updatedAt: now,
   };
@@ -111,12 +132,24 @@ export function upsertLead(incoming: StoredLead): StoredLead {
 }
 
 export function updateLead(id: string, patch: StoredLead): StoredLead | undefined {
-  const row = db.prepare('SELECT payload FROM leads WHERE id = ?').get(id) as { payload: string } | undefined;
-  if (!row) return undefined;
-  const current = parse(row);
-  // Update uses the same upsert path to keep indexes consistent.
-  db.prepare('DELETE FROM leads WHERE id = ?').run(id);
-  return upsertLead({ ...current, ...patch, id, createdAt: current.createdAt, updatedAt: new Date().toISOString() });
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row = db.prepare('SELECT payload FROM leads WHERE id = ?').get(id) as { payload: string } | undefined;
+    if (!row) {
+      db.exec('ROLLBACK');
+      return undefined;
+    }
+    const current = parse(row);
+    // Keep the existing index refresh atomic with the payload write. A send
+    // confirmation must never leave a committed delete without its update.
+    db.prepare('DELETE FROM leads WHERE id = ?').run(id);
+    const updated = upsertLead({ ...current, ...patch, id, createdAt: current.createdAt, updatedAt: new Date().toISOString() });
+    db.exec('COMMIT');
+    return updated;
+  } catch (error) {
+    try { db.exec('ROLLBACK'); } catch { /* transaction was already closed */ }
+    throw error;
+  }
 }
 
 export function deleteLead(id: string): boolean { return db.prepare('DELETE FROM leads WHERE id = ?').run(id).changes > 0; }

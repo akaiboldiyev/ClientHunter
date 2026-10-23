@@ -3,11 +3,15 @@ import path from 'path';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer as createViteServer } from 'vite';
+import { analyzeClientMessage, getOllamaHost, resolveOllamaModel } from './jarvisOllama.js';
+import { checkIncoming, clearWhatsAppSearch, connectWhatsApp, debugClickYou, debugOpenWhatsApp, debugWhatsApp, disconnectWhatsApp, getJarvisRuntime, initializeWhatsAppRuntimeForServerStart, prepareControlledTestCycle, resumeLead, sendInitialMessage, sendPreparedControlledTestCycle, sendTestMessage, setAutomationInterval, setAutoProcessing, setSendEnabled, takeOverLead } from './jarvisWhatsapp.js';
 import { deleteLead, listLeads, updateLead, upsertLead } from './persistence.js';
+import { addDays, nextFollowUpDueAt } from './src/utils/followUpSequence.js';
 
 process.loadEnvFile?.('.env');
 
 const DEFAULT_PORT = 3000;
+const serveBuiltClient = process.env.NODE_ENV === 'production' || /[\\/]dist[\\/]server\.cjs$/i.test(process.argv[1] ?? '');
 const PAGE_SIZE = 50;
 const MAX_2GIS_PAGES = Math.min(Math.max(Number(process.env.TWOGIS_MAX_PAGES ?? 20), 1), 100);
 const MAX_RESULTS = Math.min(Math.max(Number(process.env.TWOGIS_MAX_RESULTS ?? 500), 20), 500);
@@ -26,6 +30,10 @@ const normalizePhone = (raw: string) => {
   if (/^7\d{10}$/.test(digits)) return `+${digits}`;
   if (/^7\d{9}$/.test(digits)) return `+7${digits}`;
   return undefined;
+};
+const normalizedLeadPhone = (lead: any) => {
+  const raw = String(lead.phones?.find((phone: any) => phone.normalized)?.normalized || lead.phone || '');
+  return (normalizePhone(raw) || raw).replace(/\D/g, '');
 };
 const phoneType = (normalized?: string): ApiPhone['type'] => !normalized ? 'unknown' : /^\+7(?:0|4|5|6|7)\d{9}$/.test(normalized) ? 'mobile' : /^\+7\d{10}$/.test(normalized) ? 'landline' : 'unknown';
 const isWebsite = (url?: string) => { try { return Boolean(url && /^https?:$/.test(new URL(url).protocol) && !socialHost.test(new URL(url).hostname)); } catch { return false; } };
@@ -167,6 +175,9 @@ function getPort(): number {
 }
 
 async function startServer() {
+  // Persistent runtime data is kept for diagnostics and the interval only.
+  // A fresh ClientHunter process never restarts an outreach queue by itself.
+  initializeWhatsAppRuntimeForServerStart();
   const app = express();
   const port = getPort();
   app.disable('x-powered-by');
@@ -183,6 +194,35 @@ async function startServer() {
     const lead = updateLead(req.params.id, req.body ?? {});
     if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
     return res.json({ lead });
+  });
+  app.post('/api/leads/:id/whatsapp-opt-in', (req, res) => {
+    const lead = listLeads().find((item: any) => item.id === req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    if (req.body?.confirmed !== true) return res.status(400).json({ error: 'Подтвердите, что клиент явно согласился получать сообщения в WhatsApp.' });
+    const source = typeof req.body?.source === 'string' ? req.body.source.trim() : '';
+    const evidence = typeof req.body?.evidence === 'string' ? req.body.evidence.trim() : '';
+    if (!['website_form', 'inbound_whatsapp', 'in_person', 'referral', 'other'].includes(source) || evidence.length < 4 || evidence.length > 500) {
+      return res.status(400).json({ error: 'Укажите допустимый источник согласия и краткое описание подтверждения.' });
+    }
+    const updated = updateLead(req.params.id, {
+      whatsappOptInAt: new Date().toISOString(),
+      whatsappOptInSource: source,
+      whatsappOptInEvidence: evidence,
+    });
+    return res.json({ lead: updated });
+  });
+  app.delete('/api/leads/:id/whatsapp-opt-in', (req, res) => {
+    const lead = listLeads().find((item: any) => item.id === req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    const updated = updateLead(req.params.id, {
+      whatsappOptInAt: undefined,
+      whatsappOptInSource: undefined,
+      whatsappOptInEvidence: undefined,
+      followUpStatus: 'paused',
+      followUpDueAt: undefined,
+      followUpPauseReason: 'manual'
+    });
+    return res.json({ lead: updated });
   });
   app.delete('/api/leads/:id', (req, res) => res.status(deleteLead(req.params.id) ? 204 : 404).end());
 
@@ -242,13 +282,650 @@ async function startServer() {
       return res.status(502).json({ error: message, code: 'PROVIDER_ERROR' });
     }
   });
-  if (process.env.NODE_ENV !== 'production') {
+  // --- AUTOMATION & COMMUNICATION BACKEND ---
+  let automateStatus: 'idle' | 'running' | 'paused' | 'completed' | 'error' = 'idle';
+  let automateErrors = 0;
+  let automateMethod: 'template' | 'ollama' = 'template';
+
+  let campaignTemplate = `Здравствуйте! Пишу по поводу компании {name} в г. {city}.
+{proof}
+{no_website}
+Могу подготовить для вас краткий концепт современного сайта и варианты привлечения клиентов.
+Подскажите, было бы вам интересно посмотреть?`;
+
+  const fillLeadTemplate = (template: string, lead: any): string => {
+    const name = lead.name?.trim() || 'Коллеги';
+    const city = lead.city?.trim() || '';
+    const category = lead.category?.trim() || 'бизнес';
+
+    // Rating & reviews: strictly only if present and rating > 0
+    let proof = '';
+    if (lead.rating && Number(lead.rating) > 0) {
+      proof = `Обратили внимание на ваш высокий рейтинг на картах (${lead.rating}★${lead.reviews ? `, ${lead.reviews} отзывов` : ''}).`;
+    }
+
+    // No website: strictly only if confirmed without website
+    let noWebsite = '';
+    if (lead.hasWebsite === false) {
+      noWebsite = 'В карточке компании не указан официальный сайт.';
+    }
+
+    return template
+      .replace(/\{name\}/g, name)
+      .replace(/\{city\}/g, city)
+      .replace(/\{category\}/g, category)
+      .replace(/\{proof\}/g, proof)
+      .replace(/\{no_website\}/g, noWebsite)
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .trim();
+  };
+
+  const getStats = () => {
+    const leads = listLeads();
+    const totalWithWhatsApp = leads.filter((l: any) => l.whatsappStatus === 'available').length;
+    // Match the autonomous sender: prepared/approved, WhatsApp-capable leads without a prior send.
+    const readyPhones = new Set<string>();
+    const readyToSend = leads.filter((l: any) => {
+      const phone = normalizedLeadPhone(l);
+      if (!l.customPitch?.trim() || !['approved', 'prepared'].includes(l.status) || l.whatsappStatus !== 'available' || phone.length < 8 || phone.length > 15 || l.whatsappSentAt || l.whatsappSendAttemptAt || l.isRefused || l.jarvisManualControl || l.jarvisStatus === 'error' || readyPhones.has(phone)) return false;
+      if ((Array.isArray(l.conversationHistory) ? l.conversationHistory : []).some((message: any) =>
+        (message.sender === 'jarvis' || message.sender === 'user') && !message.inReplyTo &&
+        ['sent', 'delivered', 'read'].includes(message.delivery)
+      )) return false;
+      readyPhones.add(phone);
+      return true;
+    }).length;
+    // Confirmed sent: explicitly has whatsappSentAt or marked contacted
+    const confirmedSent = leads.filter((l: any) => Boolean(l.whatsappSentAt) || l.status === 'contacted').length;
+    // Awaiting preparation: new leads with WA that have no pitch yet
+    const waitingProcessing = leads.filter((l: any) => l.status === 'new' && l.whatsappStatus === 'available' && !l.customPitch).length;
+    const processed = leads.filter((l: any) => l.status === 'prepared' || Boolean(l.customPitch)).length;
+
+    return {
+      readyToSend,
+      confirmedSent,
+      waitingSending: readyToSend,
+      waitingProcessing,
+      processed,
+      totalWithWhatsApp,
+      newLeads: waitingProcessing,
+      totalAvailable: totalWithWhatsApp,
+      errors: automateErrors,
+    };
+  };
+
+  const processNextLead = async () => {
+    if (automateStatus !== 'running') return;
+    const leads = listLeads();
+    const available = leads.filter((l: any) => l.status === 'new' && l.whatsappStatus === 'available' && !l.customPitch);
+
+    if (available.length === 0) {
+      automateStatus = 'completed';
+      return;
+    }
+
+    const lead = available[0];
+    try {
+      if (automateMethod === 'template') {
+        const pitch = fillLeadTemplate(campaignTemplate, lead);
+        updateLead(lead.id, { customPitch: pitch, status: 'prepared' });
+      } else {
+        const ollama = await resolveOllamaModel();
+        const response = await fetch(`${ollama.host}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollama.model,
+            stream: false,
+            messages: [
+              {
+                role: 'system',
+                content: 'Ты — Джарвис, вежливый B2B консультант. Не выдумывай факты (цены, сроки, несуществующие кейсы). Составь очень короткое (2-4 предложения) приветливое первое сообщение в WhatsApp для компании без сайта. Предложи бесплатный краткий концепт страницы. Выведи только текст сообщения без кавычек.'
+              },
+              {
+                role: 'user',
+                content: `Компания: ${lead.name}, Город: ${lead.city || 'Актау'}, Сфера: ${lead.category}, Рейтинг: ${lead.rating || 0}, Отзывов: ${lead.reviews || 0}, Сайт: ${lead.hasWebsite ? 'есть' : 'нет'}`
+              }
+            ]
+          }),
+          signal: AbortSignal.timeout(30_000)
+        });
+
+        if (response.ok) {
+          const data: any = await response.json();
+          const pitch = (data.message?.content || '').replace(/^["']|["']$/g, '').trim();
+          updateLead(lead.id, { customPitch: pitch || fillLeadTemplate(campaignTemplate, lead), status: 'prepared' });
+        } else {
+          automateErrors++;
+          // Fallback to template so work is not blocked
+          const pitch = fillLeadTemplate(campaignTemplate, lead);
+          updateLead(lead.id, { customPitch: pitch, status: 'prepared' });
+        }
+      }
+    } catch {
+      automateErrors++;
+      // Fallback to template
+      try {
+        const pitch = fillLeadTemplate(campaignTemplate, lead);
+        updateLead(lead.id, { customPitch: pitch, status: 'prepared' });
+      } catch {
+        // Ignore secondary error
+      }
+    }
+
+    if (automateStatus === 'running') {
+      setTimeout(processNextLead, automateMethod === 'template' ? 200 : 3000);
+    }
+  };
+
+  // State and Campaign Controls
+  app.get('/api/automate/state', (_, res) => res.json({
+    status: automateStatus,
+    method: automateMethod,
+    stats: getStats(),
+    template: campaignTemplate
+  }));
+
+  app.post('/api/automate/start', (req, res) => {
+    const { method } = req.body ?? {};
+    if (method === 'ollama' || method === 'template') {
+      automateMethod = method;
+    }
+    const currentStats = getStats();
+    if (currentStats.waitingProcessing === 0) {
+      automateStatus = 'completed';
+      return res.json({ status: automateStatus, stats: currentStats });
+    }
+    if (automateStatus !== 'running') {
+      automateStatus = 'running';
+      processNextLead();
+    }
+    return res.json({ status: automateStatus, stats: getStats() });
+  });
+
+  app.post('/api/automate/pause', (_, res) => {
+    automateStatus = 'paused';
+    res.json({ status: automateStatus, stats: getStats() });
+  });
+
+  app.post('/api/automate/stop', (_, res) => {
+    automateStatus = 'idle';
+    res.json({ status: automateStatus, stats: getStats() });
+  });
+
+  // Template Management
+  app.get('/api/automate/template', (_, res) => res.json({ template: campaignTemplate }));
+  app.post('/api/automate/template', (req, res) => {
+    if (typeof req.body?.template === 'string' && req.body.template.trim()) {
+      campaignTemplate = req.body.template.trim();
+    }
+    return res.json({ template: campaignTemplate });
+  });
+
+  // Apply template immediately to leads needing pitches (without overwriting existing customPitches)
+  app.post('/api/automate/apply-template', (req, res) => {
+    const leads = listLeads();
+    const targetIds: string[] = Array.isArray(req.body?.leadIds) ? req.body.leadIds : [];
+    let updatedCount = 0;
+
+    for (const lead of leads) {
+      // If targetIds provided, only those; otherwise all new leads with WA that have no pitch yet
+      const shouldUpdate = targetIds.length > 0
+        ? targetIds.includes(lead.id) && !lead.customPitch
+        : lead.status === 'new' && lead.whatsappStatus === 'available' && !lead.customPitch;
+
+      if (shouldUpdate) {
+        const pitch = fillLeadTemplate(campaignTemplate, lead);
+        updateLead(lead.id, { customPitch: pitch, status: 'prepared' });
+        updatedCount++;
+      }
+    }
+
+    return res.json({ updatedCount, stats: getStats() });
+  });
+
+  // Confirm WhatsApp sending (Manual Confirmation)
+  app.post('/api/leads/:id/confirm-sent', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((l: any) => l.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+
+    const now = new Date().toISOString();
+    const isFirstConfirmedOutreach = !lead.whatsappSentAt;
+    const existingHistory = Array.isArray(lead.conversationHistory) ? lead.conversationHistory : [];
+    const hasInitialMessage = existingHistory.some((m: any) => m.sender === 'user');
+
+    const updatedHistory = hasInitialMessage
+      ? existingHistory
+      : [
+          ...existingHistory,
+          {
+            id: `msg-${Date.now()}`,
+            sender: 'user',
+            text: lead.customPitch || 'Первичное обращение отправлено в WhatsApp.',
+            timestamp: lead.whatsappSentAt || now,
+            delivery: 'sent'
+          }
+        ];
+
+    const updated = updateLead(id, {
+      whatsappSentAt: lead.whatsappSentAt || now,
+      status: 'contacted',
+      conversationStatus: lead.conversationStatus && lead.conversationStatus !== 'unverified'
+        ? lead.conversationStatus
+        : 'awaiting_reply',
+      conversationHistory: updatedHistory,
+      ...(isFirstConfirmedOutreach ? {
+        followUpStatus: 'active',
+        followUpStep: 0,
+        followUpDueAt: addDays(now, 2),
+        followUpPauseReason: undefined
+      } : {}),
+      nextRecommendedAction: lead.nextRecommendedAction || 'Ожидайте ответ клиента в WhatsApp'
+    });
+
+    return res.json({ lead: updated });
+  });
+
+  app.post('/api/leads/:id/followup/confirm-sent', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((item: any) => item.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    if (lead.followUpStatus !== 'active' || lead.isRefused) {
+      return res.status(409).json({ error: 'Цепочка follow-up остановлена для этого лида.' });
+    }
+    if (!lead.followUpDueAt || new Date(lead.followUpDueAt).getTime() > Date.now()) {
+      return res.status(409).json({ error: 'Время следующего касания ещё не наступило.' });
+    }
+
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!text || text.length > 4000) return res.status(400).json({ error: 'Введите текст отправленного сообщения (до 4000 символов).' });
+    const step = Number.isInteger(lead.followUpStep) ? lead.followUpStep : 0;
+    if (step < 0 || step >= 5) return res.status(409).json({ error: 'Все запланированные касания уже завершены.' });
+
+    const now = new Date().toISOString();
+    const nextDueAt = nextFollowUpDueAt(now, step);
+    const history = Array.isArray(lead.conversationHistory) ? [...lead.conversationHistory] : [];
+    history.push({
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sender: 'user',
+      text,
+      timestamp: now,
+      delivery: 'sent',
+      category: `follow-up-${step + 1}`
+    });
+    const updated = updateLead(id, {
+      conversationHistory: history,
+      followUpStep: step + 1,
+      followUpLastSentAt: now,
+      followUpDueAt: nextDueAt,
+      followUpStatus: nextDueAt ? 'active' : 'completed',
+      followUpPauseReason: undefined,
+      nextRecommendedAction: nextDueAt ? 'Следующее касание появится в очереди по расписанию.' : 'Цепочка follow-up завершена.'
+    });
+    return res.json({ lead: updated });
+  });
+
+  app.post('/api/leads/:id/followup/snooze', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((item: any) => item.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    if (lead.followUpStatus !== 'active') return res.status(409).json({ error: 'Нет активного напоминания для переноса.' });
+    const days = Number(req.body?.days);
+    if (![1, 3, 7, 14].includes(days)) return res.status(400).json({ error: 'Выберите перенос на 1, 3, 7 или 14 дней.' });
+    const updated = updateLead(id, { followUpDueAt: addDays(new Date().toISOString(), days) });
+    return res.json({ lead: updated });
+  });
+
+  app.post('/api/leads/:id/followup/stop', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((item: any) => item.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    const updated = updateLead(id, {
+      followUpStatus: 'paused',
+      followUpDueAt: undefined,
+      followUpPauseReason: 'manual',
+      nextRecommendedAction: 'Follow-up остановлен вручную.'
+    });
+    return res.json({ lead: updated });
+  });
+
+  // Record WhatsApp link open (does NOT mark as sent)
+  app.post('/api/leads/:id/open-whatsapp', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((l: any) => l.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+
+    const updated = updateLead(id, {
+      whatsappOpenedAt: new Date().toISOString()
+    });
+    return res.json({ lead: updated });
+  });
+
+  // Approve lead pitch for sending (Transition prepared -> approved)
+  app.post('/api/leads/:id/approve', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((l: any) => l.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+
+    const { customPitch } = req.body ?? {};
+    const updated = updateLead(id, {
+      status: 'approved',
+      customPitch: typeof customPitch === 'string' && customPitch.trim() ? customPitch.trim() : lead.customPitch
+    });
+    return res.json({ lead: updated });
+  });
+
+  // Accurate diagnostics of sales funnel and data quality
+  app.get('/api/leads/diagnostics', (_, res) => {
+    const leads = listLeads();
+    const total = leads.length;
+    const needQualification = leads.filter((l: any) => l.status === 'new' && !l.customPitch).length;
+    const prepared = leads.filter((l: any) => (l.status === 'prepared' || Boolean(l.customPitch)) && l.status !== 'approved' && l.status !== 'contacted' && l.status !== 'lost').length;
+    const approved = leads.filter((l: any) => l.status === 'approved' && !l.whatsappSentAt).length;
+    const confirmedSent = leads.filter((l: any) => Boolean(l.whatsappSentAt) || (l.status === 'contacted' && Array.isArray(l.conversationHistory) && l.conversationHistory.length > 0)).length;
+    const actualRepliesReceived = leads.filter((l: any) => Array.isArray(l.conversationHistory) && l.conversationHistory.some((m: any) => m.sender === 'client')).length;
+    const needsAttention = leads.filter((l: any) => l.conversationStatus === 'needs_reply' || l.conversationStatus === 'has_reply').length;
+    const interested = leads.filter((l: any) => l.conversationStatus === 'interested' || l.conversationStatus === 'discussing_terms' || l.status === 'negotiation').length;
+    const refused = leads.filter((l: any) => l.status === 'lost' || l.conversationStatus === 'refused' || l.isRefused).length;
+    const unverifiedLegacy = leads.filter((l: any) => l.status === 'contacted' && !l.whatsappSentAt && (!Array.isArray(l.conversationHistory) || l.conversationHistory.length === 0)).length;
+
+    return res.json({
+      total,
+      needQualification,
+      prepared,
+      approved,
+      confirmedSent,
+      actualRepliesReceived,
+      needsAttention,
+      interested,
+      refused,
+      unverifiedLegacy
+    });
+  });
+
+  // Jarvis Ollama Status Check
+  app.get('/api/jarvis/status', async (_, res) => {
+    const host = await getOllamaHost();
+    try {
+      const startTime = Date.now();
+      const resolved = await resolveOllamaModel(host);
+      return res.json({
+        available: true,
+        model: resolved.model,
+        models: resolved.models,
+        hasPreferredModel: resolved.models.some((m) => /qwen/i.test(m)),
+        host: resolved.host,
+        pingMs: Date.now() - startTime
+      });
+    } catch (e: any) {
+      return res.json({
+        available: false,
+        model: 'local',
+        host,
+        error: `Сервис Ollama недоступен на ${host} (${e.message})`
+      });
+    }
+  });
+
+  // Jarvis Live Inference Ping Test
+  app.post('/api/jarvis/ping', async (_, res) => {
+    const startTime = Date.now();
+    try {
+      const { host, model } = await resolveOllamaModel();
+      const response = await fetch(`${host}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          stream: false,
+          messages: [{ role: 'user', content: 'Ответь кратко: Готов.' }]
+        }),
+        signal: AbortSignal.timeout(15_000)
+      });
+      if (!response.ok) {
+        return res.status(503).json({ error: `Ollama вернула код ${response.status}` });
+      }
+      const data: any = await response.json();
+      return res.json({
+        ok: true,
+        model,
+        reply: data.message?.content?.trim() || 'Готов',
+        latencyMs: Date.now() - startTime,
+        host
+      });
+    } catch (e: any) {
+      return res.status(503).json({
+        error: `Тестовый запрос к Ollama не удался: ${e.message}`
+      });
+    }
+  });
+
+  app.get('/api/jarvis/runtime', (_, res) => res.json(getJarvisRuntime()));
+
+  app.post('/api/jarvis/whatsapp/connect', async (_, res) => {
+    const runtime = await connectWhatsApp();
+    if (runtime.browser.status !== 'ready') return res.status(503).json({ runtime, error: runtime.browser.lastError || 'WhatsApp Web требует входа по QR-коду.' });
+    return res.json({ runtime });
+  });
+
+  app.post('/api/jarvis/whatsapp/disconnect', (_, res) => res.json({ runtime: disconnectWhatsApp() }));
+
+  app.post('/api/jarvis/test/send', async (req, res) => {
+    const chatName = typeof req.body?.chatName === 'string' ? req.body.chatName.trim() : '';
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!chatName || !text) return res.status(400).json({ error: 'Укажите имя тестового чата и текст сообщения.' });
+    try {
+      return res.json({ result: await sendTestMessage(chatName, text) });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Тестовое сообщение не отправлено.' });
+    }
+  });
+
+  app.post('/api/jarvis/leads/:id/send-initial', async (req, res) => {
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : undefined;
+    try {
+      return res.json({ result: await sendInitialMessage(req.params.id, text) });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Jarvis не смог отправить первичное сообщение.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/test/prepare', async (req, res) => {
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!text) return res.status(400).json({ error: 'Укажите текст контрольного сообщения.' });
+    try {
+      return res.json({ result: await prepareControlledTestCycle(text) });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось подготовить контрольный тест.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/test/send', async (_, res) => {
+    try {
+      return res.json({ result: await sendPreparedControlledTestCycle() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Контрольный тест не отправлен.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/debug', async (_, res) => {
+    try {
+      return res.json({ result: await debugWhatsApp() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось получить состояние окна WhatsApp Web.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/debug-open', async (_, res) => {
+    try {
+      return res.json({ result: await debugOpenWhatsApp('ВЫ') });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось открыть тестовый чат WhatsApp Web.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/clear-search', async (_, res) => {
+    try {
+      return res.json({ result: await clearWhatsAppSearch() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось очистить поиск WhatsApp Web.' });
+    }
+  });
+
+  app.get('/api/jarvis/test/debug-click-you', async (_, res) => {
+    try {
+      return res.json({ result: await debugClickYou() });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось открыть чат «Вы».' });
+    }
+  });
+
+  app.post('/api/jarvis/incoming/check', async (_, res) => {
+    const result = await checkIncoming();
+    return res.status(result.runtime.browser.status === 'error' || result.runtime.browser.status === 'needs_login' ? 503 : 200).json(result);
+  });
+
+  app.post('/api/jarvis/auto/start', async (req, res) => {
+    const requestedInterval = req.body?.intervalSec;
+    if (requestedInterval !== undefined) {
+      try {
+        setAutomationInterval(requestedInterval);
+      } catch (error: any) {
+        return res.status(400).json({ runtime: getJarvisRuntime(), error: error.message });
+      }
+    }
+    let runtime = getJarvisRuntime();
+    if (runtime.browser.status !== 'ready') runtime = await connectWhatsApp();
+    if (runtime.browser.status !== 'ready') return res.status(409).json({ runtime, error: runtime.browser.lastError || 'WhatsApp Web не готов к отправке.' });
+    try {
+      setSendEnabled(true);
+      return res.json({ runtime: setAutoProcessing(true) });
+    } catch (error: any) {
+      setSendEnabled(false);
+      return res.status(409).json({ runtime: getJarvisRuntime(), error: error.message || 'Не удалось запустить автономную отправку.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/stop', (_, res) => {
+    setAutoProcessing(false);
+    return res.json({ runtime: setSendEnabled(false) });
+  });
+
+  app.post('/api/jarvis/auto/interval', (req, res) => {
+    try {
+      return res.json({ runtime: setAutomationInterval(req.body?.seconds) });
+    } catch (error: any) {
+      return res.status(400).json({ runtime: getJarvisRuntime(), error: error.message || 'Некорректный интервал.' });
+    }
+  });
+
+  app.post('/api/jarvis/auto/send-mode', (req, res) => {
+    const enabled = Boolean(req.body?.enabled);
+    if (enabled && getJarvisRuntime().browser.status !== 'ready') return res.status(409).json({ runtime: getJarvisRuntime(), error: 'Автоотправка доступна только после подключения WhatsApp Web.' });
+    return res.json({ runtime: setSendEnabled(enabled) });
+  });
+
+  app.post('/api/leads/:id/takeover', (req, res) => {
+    const lead = takeOverLead(req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+    return res.json({ lead });
+  });
+
+  app.post('/api/leads/:id/resume-jarvis', (req, res) => {
+    try {
+      const lead = resumeLead(req.params.id);
+      if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+      return res.json({ lead });
+    } catch (error: any) {
+      return res.status(409).json({ error: error.message || 'Не удалось вернуть Jarvis.' });
+    }
+  });
+
+  // Jarvis Ollama Negotiation & Analysis
+  app.post('/api/jarvis/analyze', async (req, res) => {
+    const { leadId, clientMessage, context } = req.body ?? {};
+    if (!clientMessage || typeof clientMessage !== 'string' || !clientMessage.trim()) {
+      return res.status(400).json({ error: 'Укажите текст сообщения клиента.' });
+    }
+
+    try {
+      const result = await analyzeClientMessage({ leadId, clientMessage, context });
+      return res.json({ analysis: result });
+    } catch (e: any) {
+      return res.status(503).json({
+        error: 'Не удалось получить анализ от локальной модели Ollama.',
+        details: e.message
+      });
+    }
+  });
+
+  // Record conversation message and update lead state
+  app.post('/api/leads/:id/conversation', (req, res) => {
+    const id = req.params.id;
+    const lead = listLeads().find((l: any) => l.id === id);
+    if (!lead) return res.status(404).json({ error: 'Лид не найден.' });
+
+    const { message, status, recommendedAction, isRefusal } = req.body ?? {};
+    const now = new Date().toISOString();
+    const existingHistory = Array.isArray(lead.conversationHistory) ? [...lead.conversationHistory] : [];
+
+    if (message && typeof message.text === 'string' && message.text.trim()) {
+      existingHistory.push({
+        id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        sender: message.sender || 'client',
+        text: message.text.trim(),
+        timestamp: now,
+        category: message.category,
+        intent: message.intent,
+        recommendedAction: message.recommendedAction,
+        delivery: message.delivery || (message.sender === 'client' ? 'received' : 'sent'),
+        whatsappId: message.whatsappId,
+        chatId: message.chatId,
+        inReplyTo: message.inReplyTo
+      });
+    }
+
+    const isClientRefused = Boolean(isRefusal || status === 'refused');
+    const newStatus = isClientRefused ? 'lost' : (lead.status === 'new' ? 'contacted' : lead.status);
+    const newConversationStatus = isClientRefused ? 'refused' : (status || lead.conversationStatus || 'needs_reply');
+
+    const patch: any = {
+      conversationHistory: existingHistory,
+      conversationStatus: newConversationStatus,
+      status: newStatus,
+      isRefused: isClientRefused || Boolean(lead.isRefused),
+      nextRecommendedAction: recommendedAction ?? lead.nextRecommendedAction
+    };
+
+    if (message?.sender === 'client') {
+      patch.lastClientMessage = message.text.trim();
+      patch.lastClientMessageAt = now;
+      patch.followUpStatus = 'paused';
+      patch.followUpDueAt = undefined;
+      patch.followUpPauseReason = 'client_replied';
+      patch.nextRecommendedAction = 'Клиент ответил. Follow-up приостановлен; продолжите диалог через Communication.';
+    }
+
+    if (isClientRefused) {
+      patch.followUpStatus = 'paused';
+      patch.followUpDueAt = undefined;
+      patch.followUpPauseReason = 'refused';
+    }
+
+    const updated = updateLead(id, patch);
+    return res.json({ lead: updated });
+  });
+
+  // ------------------------------------------
+
+  if (!serveBuiltClient) {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist'); app.use(express.static(distPath)); app.get('*', (_, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
-  app.listen(port, '0.0.0.0', () => console.log(`LeadScout server is running on http://0.0.0.0:${port}`));
+  app.listen(port, '127.0.0.1', () => console.log(`ClientHunter server is running on http://127.0.0.1:${port}`));
 }
 
 startServer().catch((error) => { console.error('Failed to start server:', error); process.exit(1); });
